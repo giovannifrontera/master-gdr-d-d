@@ -1,0 +1,82 @@
+{
+  "id": "master-dnd-plugin",
+  "name": "D&D Game Master Plugin",
+  "description": "D&D 5e Game Master plugin with character sheets, persistent JSON states, dice rolling, and integrated Wiki RAG memory.",
+  "main": "index.js",
+  "contracts": {
+    "tools": [
+      "rpg_roll", "dnd_roll",
+      "rpg_start_run", "dnd_start_run",
+      "rpg_save_state", "dnd_save_state",
+      "rpg_load_state", "dnd_load_state",
+      "rpg_get_sheet", "dnd_get_sheet",
+      "rpg_update_state", "dnd_update_state",
+      "rpg_log_turn", "dnd_log_turn",
+      "rpg_install_dependencies", "dnd_install_dependencies",
+      "rpg_scan_manuals", "dnd_scan_manuals",
+      "rpg_list_runs", "dnd_list_runs",
+      "rpg_create_character", "dnd_create_character",
+      "rpg_combat_start", "dnd_combat_start",
+      "rpg_combat_damage", "dnd_combat_damage",
+      "rpg_combat_next_turn", "dnd_combat_next_turn",
+      "rpg_combat_end", "dnd_combat_end",
+      "rpg_restore_backup", "dnd_restore_backup",
+      "rpg_narrate", "dnd_narrate",
+      "rpg_wiki_process_raw", "dnd_wiki_process_raw",
+      "rpg_check_wiki", "dnd_check_wiki",
+      "rpg_set_combat_position", "dnd_set_combat_position"
+    ],
+    "hooks": [
+      "before_prompt_build"
+    ]
+  },
+  "activation": {
+    "onStartup": true,
+    "allowConversationAccess": true,
+    "allowPromptInjection": true
+  },
+  "configSchema": {
+    "type": "object",
+    "required": [],
+    "properties": {
+      "stateDirectory": {
+        "type": "string",
+        "description": "Percorso assoluto alla cartella di stato. Default: <plugin-root>/../state"
+      },
+      "wikiEnabled": {
+        "type": "boolean",
+        "default": true,
+        "description": "Se abilitare o meno la memoria vettoriale RAG della wiki."
+      },
+      "wikiDataDirectory": {
+        "type": "string",
+        "description": "Percorso assoluto per i dati della wiki (pagine, LanceDB). Di default crea la cartella 'wiki-data' in stateDirectory."
+      },
+      "pythonExecutable": {
+        "type": "string",
+        "default": "python",
+        "description": "L'eseguibile Python da utilizzare (es: python, py, python3, o percorso assoluto)."
+      },
+      "k": {
+        "type": "integer",
+        "default": 3,
+        "description": "Numero di frammenti di wiki da iniettare per ogni prompt."
+      },
+      "maxChars": {
+        "type": "integer",
+        "default": 600,
+        "description": "Lunghezza massima di caratteri per ciascun frammento iniettato."
+      },
+      "serverPort": {
+        "type": "integer",
+        "default": 7331,
+        "description": "Porta locale per il server wiki (default: 7331)."
+      },
+      "debug": {
+        "type": "boolean",
+        "default": false,
+        "description": "Abilita la scrittura dei log diagnostici."
+      }
+    }
+  }
+}
