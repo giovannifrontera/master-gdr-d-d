@@ -14,12 +14,11 @@ export default definePluginEntry({
         // OpenClaw passes plugin-specific config via api.pluginConfig, not api.config
         const cfg = (api.pluginConfig ?? {});
         const debug = cfg.debug === true;
-
-        // Default relativi alla root del plugin (wiki/plugins/wiki-context-plugin/)
+        // Default paths relativi alla root del plugin (wiki/plugins/wiki-context-plugin/)
+        // index.js viene copiato qui da dist/ dopo la build
         const _pluginDir = dirname(fileURLToPath(import.meta.url));
-        const DEFAULT_WORKSPACE = resolve(_pluginDir, "..", "..");          // → wiki/
+        const DEFAULT_WORKSPACE = resolve(_pluginDir, "..", ".."); // → wiki/
         const DEFAULT_SCRIPT = resolve(_pluginDir, "..", "..", "scripts", "wiki_context.py");
-
         const workspace = cfg.workspace ?? DEFAULT_WORKSPACE;
         const wikiContextScript = cfg.wikiContextScript ?? DEFAULT_SCRIPT;
         if (!existsSync(wikiContextScript)) {
