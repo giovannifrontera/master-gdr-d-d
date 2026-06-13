@@ -90,6 +90,35 @@ Both plugins are installed into OpenClaw and work together during every conversa
 | Python | 3.10 or newer |
 | Shell | Windows PowerShell for `install.ps1` |
 
+### What Is Automatic
+
+`install.ps1` assumes OpenClaw is already installed and available in `PATH`. From there, the project bootstraps itself in two steps:
+
+| Step | What happens |
+| --- | --- |
+| Install script | Registers `master-dnd-plugin` and `wiki-context-plugin` with OpenClaw |
+| First OpenClaw startup | Creates local state/wiki folders and tries to install missing Python packages |
+
+The plugin bundles the wiki backend under `master-dnd-plugin/wiki-backend/`, including scripts, config template, skills and Python requirements. No separate wiki repository is required.
+
+On startup, `master-dnd-plugin` checks for the main Python packages:
+
+```text
+lancedb, sentence_transformers, fastapi, uvicorn, watchfiles, jose
+```
+
+If one is missing, it runs:
+
+```powershell
+python -m pip install -r master-dnd-plugin\wiki-backend\requirements.txt
+```
+
+The same installation can be triggered manually from OpenClaw with:
+
+```text
+rpg_install_dependencies
+```
+
 ### Install
 
 ```powershell
@@ -109,6 +138,12 @@ Python dependencies can also be installed manually:
 
 ```bash
 pip install -r wiki/requirements.txt
+```
+
+For the self-contained plugin backend, the equivalent path is:
+
+```powershell
+python -m pip install -r master-dnd-plugin\wiki-backend\requirements.txt
 ```
 
 ## Dashboard
