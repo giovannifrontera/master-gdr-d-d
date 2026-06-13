@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>⚔ D&D Master Console</title>
+<link href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Cinzel:wght@400;600;700;900&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0a0a12; --panel:#0d0d1c; --card:#111128; --lift:#161630;
+  --gold:#c9a227; --gold2:#e8c547; --gold-dim:#7a5f10; --gold-glow:rgba(201,162,39,.15);
+  --blood:#7c1818; --blood-b:#c42b2b;
+  --arcane:#2d1a5e; --arcane-b:#7c3aed; --arcane-light:#a78bfa;
+  --forest:#1a3d1a; --forest-b:#22c55e;
+  --ice:#1a3050; --ice-b:#60a5fa;
+  --parchment:#e8d5b0; --ash:#7a7a8a; --muted:#4a4a5a;
+  --hp-s:#15803d; --hp-w:#b45309; --hp-c:#b91c1c;
+  --bdr:rgba(201,162,39,.15); --bdr-s:rgba(201,162,39,.4);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--ink);
+  background-image:
+    radial-gradient(ellipse at 15% 85%,rgba(45,26,94,.25) 0%,transparent 55%),
+    radial-gradient(ellipse at 85% 15%,rgba(124,24,24,.15) 0%,transparent 50%),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 5L35 25H55L40 38L45 58L30 45L15 58L20 38L5 25H25Z' fill='none' stroke='rgba(201,162,39,0.03)' stroke-width='1'/%3E%3C/svg%3E");
+  color:var(--parchment);
+  font-family:'EB Garamond',Georgia,serif;
+  font-size:15px;
+  display:flex;flex-direction:column;
+}
+
+/* Parchment noise overlay */
+body::before{content:'';position:fixed;inset:0;z-index:9998;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.015) 3px,rgba(0,0,0,.015) 4px),
+             repeating-linear-gradient(90deg,transparent,transparent 3px,rgba(201,162,39,.005) 3px,rgba(201,162,39,.005) 4px)}
+
+/* ── Typography ── */
+.font-title{font-family:'Uncial Antiqua',serif}
+.font-head{font-family:'Cinzel',serif}
+.mono{font-family:'Share Tech Mono',monospace}
+h2{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:4px;text-transform:uppercase;color:var(--gold-dim)}
+
+/* ── Header ── */
+.hdr{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+  padding:8px 18px;border-bottom:1px solid var(--bdr);
+  background:linear-gradient(180deg,rgba(201,162,39,.06) 0%,transparent 100%)}
+.hdr-title{display:flex;align-items:center;gap:12px}
+.hdr-title h1{font-family:'Uncial Antiqua',serif;font-size:1.15rem;color:var(--gold);
+  text-shadow:0 0 24px rgba(201,162,39,.4),0 0 60px rgba(201,162,39,.15);letter-spacing:2px}
+.hdr-camp{font-family:'EB Garamond',serif;font-style:italic;color:var(--ash);font-size:.9rem}
+.hdr-info{display:flex;gap:16px;align-items:center;font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--ash)}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;animation:blink 2s infinite}
+.dot.ok{background:var(--hp-s)}.dot.err{background:var(--blood-b)}.dot.warn{background:var(--hp-w)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Columns ── */
+.cols{flex:1;display:grid;grid-template-columns:290px 1fr 320px;gap:1px;background:var(--bdr);overflow:hidden;min-height:0}
+.col{background:var(--panel);display:flex;flex-direction:column;overflow:hidden}
+
+/* ── Section header ── */
+.sec{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+  padding:7px 13px;border-bottom:1px solid var(--bdr);background:rgba(0,0,0,.2)}
+.chip{font-family:'Cinzel',serif;font-size:.58rem;font-weight:700;
+  color:var(--ink);background:var(--gold);padding:2px 8px;border-radius:2px;letter-spacing:1px}
+.chip.blue{background:var(--ice-b);color:var(--ink)}
+
+/* ════════════════════════════════════
+   LEFT — PARTY
+════════════════════════════════════ */
+.party-scroll{flex:1;overflow-y:auto;padding:10px}
+.party-scroll::-webkit-scrollbar{width:3px}
+.party-scroll::-webkit-scrollbar-thumb{background:var(--bdr-s);border-radius:2px}
+
+.pcard{background:var(--card);border:1px solid var(--bdr);border-radius:6px;
+  margin-bottom:10px;overflow:hidden;transition:border-color .2s}
+.pcard:hover{border-color:var(--bdr-s)}
+.pcard-top{display:flex;gap:10px;padding:10px 10px 8px}
+.pcard-portrait{width:60px;height:84px;flex-shrink:0;border-radius:4px;overflow:hidden;
+  border:1px solid var(--bdr-s);background:var(--arcane)}
+.pcard-portrait svg{width:100%;height:100%}
+.pcard-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.pcard-name{font-family:'Cinzel',serif;font-weight:700;font-size:.85rem;color:var(--parchment);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard-class{font-size:.68rem;color:var(--ash);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard-badges{display:flex;gap:4px;flex-wrap:wrap}
+.badge{font-family:'Share Tech Mono',monospace;font-size:.5rem;padding:1px 5px;
+  border-radius:2px;white-space:nowrap}
+.badge.gold{background:rgba(201,162,39,.12);color:var(--gold);border:1px solid rgba(201,162,39,.25)}
+.badge.blue{background:rgba(96,165,250,.1);color:var(--ice-b);border:1px solid rgba(96,165,250,.25)}
+.badge.green{background:rgba(34,197,94,.1);color:var(--forest-b);border:1px solid rgba(34,197,94,.25)}
+
+.hp-section{padding:0 10px 8px}
+.hp-row{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.hp-bar{flex:1;height:5px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden}
+.hp-fill{height:100%;border-radius:3px;transition:width .5s,background .5s}
+.hp-fill.w{background:var(--hp-w)}.hp-fill.c{background:var(--hp-c);animation:crit 1s infinite}
+@keyframes crit{0%,100%{box-shadow:0 0 5px var(--hp-c)}50%{box-shadow:none}}
+.hp-text{font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--ash);white-space:nowrap}
+
+.stats-row{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;padding:0 10px 8px}
+.stat{display:flex;flex-direction:column;align-items:center;
+  background:rgba(255,255,255,.025);border-radius:3px;padding:3px 2px}
+.stat-v{font-family:'Cinzel',serif;font-size:.72rem;font-weight:700;color:var(--gold)}
+.stat-k{font-size:.42rem;color:var(--ash);text-transform:uppercase;letter-spacing:.5px}
+
+.inv-section{border-top:1px solid var(--bdr);padding:6px 10px 8px}
+.inv-title{font-family:'Cinzel',serif;font-size:.52rem;letter-spacing:3px;
+  color:var(--gold-dim);text-transform:uppercase;margin-bottom:5px}
+.inv-items{display:flex;flex-direction:column;gap:2px}
+.inv-item{font-size:.68rem;color:var(--ash);line-height:1.4;
+  padding-left:10px;position:relative;font-family:'EB Garamond',serif}
+.inv-item::before{content:'◆';position:absolute;left:0;color:var(--gold-dim);font-size:.45rem;top:2px}
+.inv-item.special{color:var(--gold);font-style:italic}
+
+.quest-section{border-top:1px solid var(--bdr);padding:6px 10px 8px}
+.quest-item{font-size:.68rem;color:var(--arcane-light);font-style:italic;line-height:1.4;
+  padding-left:10px;position:relative}
+.quest-item::before{content:'◈';position:absolute;left:0;color:var(--arcane-b);font-size:.45rem;top:2px}
+
+/* Equipment / quest collapsible toggle */
+.inv-toggle{width:100%;background:none;border:none;cursor:pointer;
+  display:flex;align-items:center;gap:6px;padding:0 0 4px;
+  font-family:'Cinzel',serif;font-size:.52rem;letter-spacing:3px;
+  color:var(--gold-dim);text-transform:uppercase;text-align:left}
+.inv-toggle:hover{color:var(--gold)}
+.inv-toggle:hover .inv-arrow{color:var(--gold)}
+.inv-arrow{font-size:.65rem;transition:transform .15s;line-height:1;color:var(--gold-dim)}
+.inv-count{font-size:.44rem;opacity:.55;margin-left:auto;font-style:normal;letter-spacing:0}
+
+/* ════════════════════════════════════
+   CENTER — SCENE PANEL
+════════════════════════════════════ */
+.scene-wrap{display:flex;flex-direction:column;gap:12px;padding:2px}
+.scene-location{text-align:center;padding:20px 16px 16px;
+  background:linear-gradient(180deg,rgba(201,162,39,.07) 0%,transparent 100%);
+  border:1px solid var(--bdr);border-radius:8px}
+.scene-loc-icon{font-size:1.5rem;margin-bottom:6px;opacity:.65}
+.scene-loc-name{font-family:'Cinzel',serif;font-size:.95rem;font-weight:700;
+  color:var(--gold);letter-spacing:2px;
+  text-shadow:0 0 20px rgba(201,162,39,.25)}
+.scene-tempo{font-size:.68rem;color:var(--ash);font-style:italic;margin-top:5px;letter-spacing:.5px}
+.scene-section{background:var(--card);border:1px solid var(--bdr);border-radius:6px;padding:10px 12px}
+.scene-sec-title{font-family:'Cinzel',serif;font-size:.5rem;letter-spacing:3px;
+  color:var(--gold-dim);text-transform:uppercase;margin-bottom:8px}
+.scene-npc{font-size:.75rem;color:var(--parchment);padding:4px 0 4px 14px;position:relative;
+  border-bottom:1px solid rgba(201,162,39,.05);line-height:1.4}
+.scene-npc::before{content:'◆';position:absolute;left:0;color:var(--gold-dim);font-size:.4rem;top:6px}
+.scene-npc:last-child{border-bottom:none}
+.scene-npc-stato{font-size:.62rem;color:var(--ash);font-style:italic;margin-left:5px}
+.scene-trama{padding:5px 0;border-bottom:1px solid rgba(201,162,39,.05)}
+.scene-trama:last-child{border-bottom:none}
+.scene-trama-k{font-family:'Share Tech Mono',monospace;font-size:.56rem;
+  color:var(--gold-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.scene-trama-v{font-size:.72rem;color:var(--arcane-light);font-style:italic;line-height:1.45}
+
+/* ════════════════════════════════════
+   CENTER — DYNAMIC PANEL
+════════════════════════════════════ */
+.center-scroll{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:12px}
+.center-scroll::-webkit-scrollbar{width:3px}
+.center-scroll::-webkit-scrollbar-thumb{background:var(--bdr-s);border-radius:2px}
+
+/* ── Portraits (no combat) ── */
+.portraits-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.portrait-panel{background:var(--card);border:1px solid var(--bdr);border-radius:8px;
+  overflow:hidden;position:relative;transition:all .3s}
+.portrait-panel:hover{border-color:var(--bdr-s);transform:translateY(-2px);
+  box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.portrait-panel svg{width:100%;height:auto;display:block}
+.portrait-label{padding:8px 10px;border-top:1px solid var(--bdr)}
+.portrait-name{font-family:'Cinzel',serif;font-size:.8rem;font-weight:700;color:var(--parchment)}
+.portrait-sub{font-size:.65rem;color:var(--ash);margin-top:1px}
+.portrait-hp{margin-top:5px;display:flex;align-items:center;gap:7px}
+.portrait-hp-bar{flex:1;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden}
+.portrait-hp-fill{height:100%;border-radius:2px;transition:width .5s,background .5s}
+.portrait-hp-val{font-family:'Share Tech Mono',monospace;font-size:.58rem;color:var(--ash)}
+
+.no-party{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  flex:1;gap:8px;color:var(--muted);font-style:italic;font-size:.9rem}
+.no-party-rune{font-family:'Uncial Antiqua',serif;font-size:3rem;color:var(--bdr);line-height:1}
+
+/* ── Combat (active) ── */
+.combat-wrap{display:flex;flex-direction:column;gap:12px}
+.init-list{display:flex;flex-direction:column;gap:5px}
+.irow{display:grid;grid-template-columns:14px 26px 1fr auto;align-items:center;gap:7px;
+  padding:8px 10px;background:var(--lift);border:1px solid transparent;border-radius:4px;
+  transition:all .2s;position:relative;overflow:hidden}
+.irow::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:background .2s}
+.irow.act{border-color:var(--bdr-s);background:rgba(201,162,39,.07);box-shadow:0 0 12px rgba(201,162,39,.08)}
+.irow.act::before{background:var(--gold)}
+.irow.dead{opacity:.35}
+.iarrow{font-size:.55rem;color:var(--gold)}
+.iemoji{font-size:1rem;text-align:center;line-height:1}
+.iinfo{min-width:0}
+.iname{font-family:'Cinzel',serif;font-size:.72rem;font-weight:600;color:var(--parchment);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.isub{display:flex;gap:5px;margin-top:2px;align-items:center}
+.tbadge{font-family:'Share Tech Mono',monospace;font-size:.46rem;padding:1px 4px;
+  border-radius:2px;text-transform:uppercase;letter-spacing:1px}
+.tbadge.giocatore{background:rgba(96,165,250,.15);color:var(--ice-b);border:1px solid rgba(96,165,250,.25)}
+.tbadge.mostro{background:rgba(196,43,43,.15);color:#e06060;border:1px solid rgba(196,43,43,.25)}
+.tbadge.compagno{background:rgba(34,197,94,.15);color:var(--forest-b);border:1px solid rgba(34,197,94,.25)}
+.ihpr{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:50px}
+.ihpv{font-family:'Share Tech Mono',monospace;font-size:.58rem;color:var(--ash)}
+.minibar{width:48px;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden}
+.minifill{height:100%;border-radius:2px;transition:width .4s,background .4s}
+
+.cgrid-wrap{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.cgrid{display:grid;border:1px solid var(--bdr-s);border-radius:4px;overflow:hidden;
+  box-shadow:inset 0 0 20px rgba(0,0,0,.3),0 0 20px rgba(201,162,39,.04)}
+.gcell{width:46px;height:46px;display:flex;align-items:center;justify-content:center;
+  border-right:1px solid rgba(201,162,39,.06);border-bottom:1px solid rgba(201,162,39,.06);
+  font-size:1.3rem;position:relative;cursor:default;transition:background .12s;background:var(--ink)}
+.gcell:hover{background:rgba(201,162,39,.04)}
+.gcell.tok{background:rgba(201,162,39,.03)}
+.gcell.act{background:rgba(201,162,39,.1);box-shadow:inset 0 0 10px rgba(201,162,39,.12)}
+.gcell.act::after{content:'';position:absolute;inset:2px;border:1px solid rgba(201,162,39,.4);
+  border-radius:3px;pointer-events:none;animation:glow 1.5s infinite}
+@keyframes glow{0%,100%{border-color:rgba(201,162,39,.35)}50%{border-color:rgba(201,162,39,.8)}}
+.gcoord{position:absolute;bottom:1px;right:2px;font-size:.34rem;
+  color:rgba(201,162,39,.15);font-family:'Share Tech Mono',monospace}
+.gleg{display:flex;flex-direction:column;gap:4px;padding:8px;
+  background:var(--card);border:1px solid var(--bdr);border-radius:4px;min-width:120px}
+.gleg-t{font-family:'Cinzel',serif;font-size:.52rem;letter-spacing:3px;
+  color:var(--gold-dim);text-transform:uppercase;margin-bottom:2px}
+.gleg-r{display:flex;align-items:center;gap:6px;font-size:.66rem;color:var(--ash)}
+.gleg-e{font-size:.9rem;width:16px;text-align:center}
+.gleg-b{flex:1;height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden}
+.gleg-f{height:100%;border-radius:2px}
+
+/* ════════════════════════════════════
+   RIGHT — CHAT
+════════════════════════════════════ */
+.chat-status{flex-shrink:0;padding:3px 12px;border-bottom:1px solid var(--bdr);
+  font-family:'Share Tech Mono',monospace;font-size:.58rem;color:var(--ash);display:flex;gap:6px;align-items:center}
+.chat-msgs{flex:1;overflow-y:auto;padding:10px 10px 4px;display:flex;flex-direction:column;gap:10px}
+.chat-msgs::-webkit-scrollbar{width:3px}
+.chat-msgs::-webkit-scrollbar-thumb{background:var(--bdr-s);border-radius:2px}
+
+/* Narrazione GM */
+.narr-block{font-style:italic;color:rgba(232,213,176,.68);font-size:.83rem;line-height:1.7;
+  border-left:2px solid rgba(201,162,39,.18);padding-left:10px;margin-left:2px}
+.narr-block strong{color:var(--gold);font-style:normal}
+.narr-block em{color:var(--arcane-light)}
+
+/* Portrait bubble */
+.rpg-bubble{display:flex;gap:9px;align-items:flex-start;
+  border:1px solid var(--bdr);border-left:3px solid var(--gold);
+  border-radius:0 6px 6px 0;padding:9px 11px;background:var(--card)}
+.rpg-bubble.npc{border-left-color:#c42b2b;background:rgba(124,24,24,.06)}
+.rpg-bubble.gm-direct{border-left-color:var(--arcane-b);background:rgba(45,26,94,.1)}
+.rpg-bubble.player{flex-direction:row-reverse;
+  border-left:1px solid var(--bdr);border-right:3px solid var(--ice-b);
+  border-radius:6px 0 0 6px;background:rgba(26,48,80,.35)}
+.rp-portrait{width:42px;height:54px;flex-shrink:0;border-radius:4px;
+  border:1px solid var(--bdr-s);object-fit:cover;display:block}
+.rp-emoji-fallback{width:42px;height:54px;flex-shrink:0;border-radius:4px;
+  border:1px solid var(--bdr-s);display:none;align-items:center;justify-content:center;
+  font-size:1.5rem;background:rgba(45,26,94,.35)}
+.rpg-bubble.npc .rp-emoji-fallback{background:rgba(124,24,24,.3)}
+.rpg-bubble.player .rp-emoji-fallback{background:rgba(26,48,80,.5)}
+.rp-body{flex:1;min-width:0}
+.rp-name{font-family:'Cinzel',serif;font-size:.57rem;letter-spacing:2px;
+  text-transform:uppercase;color:var(--gold);margin-bottom:3px}
+.rpg-bubble.npc .rp-name{color:#e06060}
+.rpg-bubble.gm-direct .rp-name{color:var(--arcane-light)}
+.rpg-bubble.player .rp-name{color:var(--ice-b);text-align:right}
+.rp-text{font-size:.83rem;line-height:1.6;font-family:'EB Garamond',serif}
+.rpg-bubble.player .rp-text{text-align:right}
+.rp-text strong{color:var(--gold)}.rp-text em{color:var(--arcane-light)}
+.rp-text code{font-family:'Share Tech Mono',monospace;font-size:.78rem;
+  background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px;color:var(--forest-b)}
+.rp-text h1,.rp-text h2,.rp-text h3{font-family:'Cinzel',serif;color:var(--gold);margin:5px 0 2px}
+.rp-text ul,.rp-text ol{padding-left:16px;margin:3px 0}.rp-text li{margin:1px 0}
+.rp-text p{margin:2px 0}.rp-text p:first-child{margin-top:0}.rp-text p:last-child{margin-bottom:0}
+.rp-text blockquote{border-left:2px solid var(--gold-dim);padding-left:8px;
+  color:var(--ash);font-style:italic;margin:3px 0}
+.rp-text hr{border:none;border-top:1px solid var(--bdr);margin:5px 0}
+.rp-text table{width:100%;border-collapse:collapse;font-size:.75rem;margin:4px 0}
+.rp-text td,.rp-text th{border:1px solid var(--bdr);padding:3px 7px}
+.rp-text th{background:rgba(201,162,39,.08);color:var(--gold);font-family:'Cinzel',serif;font-size:.65rem}
+
+/* Typing indicator */
+.typing-ind{font-family:'Share Tech Mono',monospace;font-size:.7rem;
+  color:var(--gold);align-self:flex-start;padding:4px 8px;animation:tb 1s infinite}
+@keyframes tb{0%,100%{opacity:.35}50%{opacity:1}}
+
+/* Chat footer */
+.chat-footer{flex-shrink:0;padding:8px 10px;border-top:1px solid var(--bdr);display:flex;gap:7px;align-items:flex-end}
+.chat-footer textarea{flex:1;background:var(--lift);border:1px solid var(--bdr);border-radius:4px;
+  color:var(--parchment);font-family:'EB Garamond',serif;font-size:.85rem;
+  padding:7px 9px;resize:none;outline:none;min-height:36px;max-height:120px;
+  line-height:1.5;transition:border-color .2s}
+.chat-footer textarea::placeholder{color:var(--muted)}
+.chat-footer textarea:focus{border-color:var(--bdr-s)}
+.send-btn{flex-shrink:0;background:rgba(201,162,39,.12);color:var(--gold);
+  border:1px solid rgba(201,162,39,.3);border-radius:4px;padding:7px 12px;
+  cursor:pointer;font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:1px;
+  transition:all .2s;white-space:nowrap}
+.send-btn:hover{background:var(--gold);color:var(--ink)}
+.send-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* Portrait edit button */
+.pcard-portrait-wrap{position:relative;width:60px;flex-shrink:0}
+.portrait-edit-btn{position:absolute;bottom:3px;right:3px;width:18px;height:18px;
+  border-radius:50%;background:rgba(201,162,39,.9);color:var(--ink);border:1px solid var(--ink);
+  display:flex;align-items:center;justify-content:center;font-size:.6rem;
+  cursor:pointer;line-height:1;padding:0;opacity:0;transition:opacity .2s}
+.pcard-portrait-wrap:hover .portrait-edit-btn{opacity:1}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-title">
+    <h1 class="hdr-title">⚔ Master Console</h1>
+    <span id="cname" class="hdr-camp"></span>
+  </div>
+  <div class="hdr-info">
+    <span class="mono" id="tinfo">—</span>
+    <span><span class="dot err" id="sdot"></span> <span id="slabel">Avvio...</span></span>
+    <span><span class="dot warn" id="wsdot"></span> <span id="wslabel">Chat...</span></span>
+  </div>
+</header>
+
+<div class="cols">
+
+  <!-- ═══ LEFT: PARTY ═══ -->
+  <div class="col">
+    <div class="sec"><h2>Compagni</h2></div>
+    <div class="party-scroll" id="party">
+      <div class="no-party"><div class="no-party-rune">⚜</div><span>Nessun personaggio</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ CENTER: DYNAMIC ═══ -->
+  <div class="col">
+    <div class="sec">
+      <h2 id="center-label">Scenario</h2>
+      <span class="chip" id="rchip" style="display:none">RND 1</span>
+    </div>
+    <div class="center-scroll" id="center">
+      <div class="no-party" style="min-height:200px"><div class="no-party-rune">✦</div><span>Avvia una campagna per vedere i personaggi</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ RIGHT: CHAT ═══ -->
+  <div class="col">
+    <div class="sec"><h2>Chat con il Master</h2></div>
+    <div class="chat-status"><span class="dot warn" id="wsdot2"></span><span id="wslabel2">Connessione...</span></div>
+    <div class="chat-msgs" id="chatmsgs"></div>
+    <div class="chat-footer">
+      <textarea id="chatinput" placeholder="Scrivi al Master..." rows="1"></textarea>
+      <button class="send-btn" id="chatsend" disabled>INVIA</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const W=8,H=6,DASH_PORT=__DASH_PORT__;
+const WS_PROXY=`ws://localhost:${__DASH_PORT__}/ws`;
+let SESSION_KEY='main';
+
+/* ─── Utilities ─── */
+function uuid(){return crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36)}
+function pct(c,m){return m>0?Math.max(0,Math.min(100,c/m*100)):0}
+function hbg(c,m){const p=pct(c,m);return p>50?'var(--hp-s)':p>25?'var(--hp-w)':'var(--hp-c)'}
+function hcls(c,m){const p=pct(c,m);return p>50?'':'w'}
+function defEmoji(t){return t==='giocatore'?'🧙':t==='compagno'?'🛡️':'⚔️'}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+/* ─── Markdown Parser ─── */
+function md(raw){
+  if(!raw)return '';
+  // Escape HTML
+  let s=raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Tables (simple: | a | b |)
+  s=s.replace(/^\|(.+)\|\s*\n\|[-: |]+\|\s*\n((?:\|.+\|\s*\n?)*)/gm,(m,hdr,rows)=>{
+    const ths=hdr.split('|').map(c=>`<th>${c.trim()}</th>`).join('');
+    const trs=rows.trim().split('\n').map(r=>`<tr>${r.split('|').filter((_,i,a)=>i>0&&i<a.length-1).map(c=>`<td>${c.trim()}</td>`).join('')}</tr>`).join('');
+    return `<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+  });
+  // Blockquote
+  s=s.replace(/^&gt; (.+)$/gm,'<blockquote>$1</blockquote>');
+  // Headers
+  s=s.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+  s=s.replace(/^## (.+)$/gm,'<h2>$1</h2>');
+  s=s.replace(/^# (.+)$/gm,'<h1>$1</h1>');
+  // HR
+  s=s.replace(/^---+$/gm,'<hr>');
+  // Bold+italic, bold, italic
+  s=s.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>');
+  s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  s=s.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  s=s.replace(/__(.+?)__/g,'<strong>$1</strong>');
+  s=s.replace(/_(.+?)_/g,'<em>$1</em>');
+  // Code
+  s=s.replace(/`(.+?)`/g,'<code>$1</code>');
+  // Ordered lists
+  s=s.replace(/^\d+\. (.+)$/gm,'<li data-ol>$1</li>');
+  // Unordered lists
+  s=s.replace(/^[-*+] (.+)$/gm,'<li>$1</li>');
+  // Wrap consecutive <li> in <ul> or <ol>
+  s=s.replace(/((?:<li[^>]*>.*<\/li>\n?)+)/g,blk=>{
+    const isOl=blk.includes('data-ol');
+    const tag=isOl?'ol':'ul';
+    return `<${tag}>${blk.replace(/ data-ol/g,'')}</${tag}>`;
+  });
+  // Paragraphs
+  const parts=s.split(/\n\n+/);
+  s=parts.map(p=>{
+    p=p.trim();
+    if(!p)return '';
+    if(/^<(h[1-6]|ul|ol|li|hr|table|blockquote)/.test(p))return p;
+    return `<p>${p.replace(/\n/g,'<br>')}</p>`;
+  }).join('\n');
+  return s;
+}
+
+/* ─── SVG Portrait Library ─── */
+const CLASS_SVG={
+  mago:`<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="pmg" cx="50%" cy="30%"><stop offset="0%" stop-color="#2d1a5e"/><stop offset="100%" stop-color="#0d0720"/></radialGradient></defs>
+    <rect width="200" height="260" fill="url(#pmg)"/>
+    <!-- Stars -->
+    <circle cx="30" cy="20" r="1.5" fill="#a78bfa" opacity=".8"/><circle cx="170" cy="35" r="1" fill="#c4b5fd"/><circle cx="155" cy="15" r="2" fill="#7c3aed" opacity=".6"/>
+    <circle cx="20" cy="60" r="1" fill="#a78bfa"/><circle cx="180" cy="55" r="1.5" fill="#c4b5fd" opacity=".7"/>
+    <!-- Crescent moon -->
+    <path d="M155 25 A18 18 0 1 1 155 61 A12 12 0 1 0 155 25Z" fill="#c4b5fd" opacity=".5"/>
+    <!-- Robe body -->
+    <path d="M100 80 L70 240 L130 240Z" fill="#1e0a4e" stroke="#7c3aed" stroke-width="1"/>
+    <path d="M80 120 L65 240 L135 240 L120 120Z" fill="#2d1a6e"/>
+    <!-- Head -->
+    <ellipse cx="100" cy="68" rx="18" ry="20" fill="#d4a574"/>
+    <!-- Hat -->
+    <path d="M82 60 L100 10 L118 60Z" fill="#1e0a4e" stroke="#7c3aed" stroke-width="1"/>
+    <ellipse cx="100" cy="60" rx="22" ry="6" fill="#2d1a6e"/>
+    <!-- Eyes -->
+    <ellipse cx="93" cy="68" rx="3" ry="3.5" fill="#7c3aed"/><ellipse cx="107" cy="68" rx="3" ry="3.5" fill="#7c3aed"/>
+    <circle cx="93" cy="67" r="1.5" fill="white"/><circle cx="107" cy="67" r="1.5" fill="white"/>
+    <!-- Staff -->
+    <line x1="145" y1="240" x2="155" y2="70" stroke="#5a3a1a" stroke-width="4"/>
+    <circle cx="156" cy="62" r="12" fill="none" stroke="#7c3aed" stroke-width="2"/>
+    <circle cx="156" cy="62" r="8" fill="#a78bfa" opacity=".8"/>
+    <circle cx="156" cy="62" r="4" fill="white" opacity=".9"/>
+    <!-- Arms -->
+    <path d="M90 130 L80 170 L120 155" fill="none" stroke="#7c3aed" stroke-width="2"/>
+    <!-- Magic glow -->
+    <circle cx="156" cy="62" r="18" fill="none" stroke="#a78bfa" stroke-width="1" opacity=".4" style="animation:glow 2s infinite"/>
+    <!-- Arcane symbols on robe -->
+    <text x="100" y="190" text-anchor="middle" font-size="16" fill="#7c3aed" opacity=".5">✦</text>
+  </svg>`,
+
+  guerriero:`<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="pgr" cx="50%" cy="40%"><stop offset="0%" stop-color="#4a1010"/><stop offset="100%" stop-color="#0d0505"/></radialGradient></defs>
+    <rect width="200" height="260" fill="url(#pgr)"/>
+    <!-- Sky/battle atmosphere -->
+    <path d="M0 180 Q100 160 200 180 L200 260 L0 260Z" fill="rgba(100,20,20,.3)"/>
+    <!-- Body armor -->
+    <rect x="72" y="115" width="56" height="80" rx="4" fill="#3a3a3a"/>
+    <rect x="78" y="120" width="44" height="70" rx="2" fill="#4a4a4a"/>
+    <!-- Chest plate detail -->
+    <path d="M85 125 L100 135 L115 125 L115 160 L100 165 L85 160Z" fill="#555" stroke="#888" stroke-width="1"/>
+    <!-- Legs -->
+    <rect x="78" y="195" width="20" height="50" rx="3" fill="#3a3a3a"/>
+    <rect x="102" y="195" width="20" height="50" rx="3" fill="#3a3a3a"/>
+    <!-- Head/helmet -->
+    <rect x="82" y="62" width="36" height="40" rx="5" fill="#4a4a4a"/>
+    <path d="M82 75 L200,75 L200,82 L200 82" fill="none"/>
+    <rect x="85" y="75" width="30" height="8" rx="1" fill="#333"/><!-- visor -->
+    <rect x="88" y="55" width="24" height="12" rx="2" fill="#555"/><!-- top helm -->
+    <!-- Plume -->
+    <path d="M100 40 Q110 50 105 60" stroke="#dc2626" stroke-width="4" fill="none"/>
+    <path d="M100 40 Q95 48 98 58" stroke="#dc2626" stroke-width="3" fill="none"/>
+    <!-- Sword raised -->
+    <line x1="145" y1="240" x2="160" y2="50" stroke="#888" stroke-width="6"/>
+    <ellipse cx="152" cy="47" rx="12" ry="5" fill="#aaa" transform="rotate(-20,152,47)"/>
+    <rect x="148" y="48" width="8" height="3" fill="#c9a227" transform="rotate(-20,152,50)"/>
+    <!-- Shield -->
+    <path d="M50 120 L70 110 L80 180 L50 200Z" fill="#3a3a3a" stroke="#c9a227" stroke-width="2"/>
+    <path d="M55 130 L68 122 L76 178 L55 192Z" fill="#2a2a2a"/>
+    <text x="64" y="155" text-anchor="middle" font-size="20" fill="#c9a227" opacity=".6">⚔</text>
+    <!-- Arms -->
+    <rect x="62" y="115" width="12" height="50" rx="4" fill="#3a3a3a"/>
+    <rect x="126" y="115" width="12" height="40" rx="4" fill="#3a3a3a" transform="rotate(-15,132,135)"/>
+  </svg>`,
+
+  ranger:`<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="prn" cx="50%" cy="30%"><stop offset="0%" stop-color="#0f2a0f"/><stop offset="100%" stop-color="#050d05"/></radialGradient></defs>
+    <rect width="200" height="260" fill="url(#prn)"/>
+    <!-- Forest silhouette -->
+    <path d="M0 180 L20 150 L35 170 L50 130 L65 160 L80 120 L95 155 L110 110 L125 145 L140 115 L155 150 L170 130 L185 160 L200 140 L200 260 L0 260Z" fill="rgba(20,50,20,.5)"/>
+    <!-- Moon -->
+    <circle cx="160" cy="35" r="20" fill="#e8d5b0" opacity=".3"/>
+    <circle cx="168" cy="30" r="16" fill="#0f2a0f" opacity=".8"/>
+    <!-- Body - cloak -->
+    <path d="M100 90 L60 250 L140 250Z" fill="#1a3d1a" stroke="#22c55e" stroke-width="1" opacity=".8"/>
+    <path d="M90 110 L55 250 L100 240 L145 250 L110 110Z" fill="#162d16"/>
+    <!-- Head -->
+    <ellipse cx="100" cy="78" rx="16" ry="18" fill="#c4a882"/>
+    <!-- Hood -->
+    <path d="M84 78 Q100 50 116 78 Q116 85 100 90 Q84 85 84 78Z" fill="#1a3d1a"/>
+    <!-- Eyes visible in shadow -->
+    <ellipse cx="95" cy="80" rx="2.5" ry="2" fill="#22c55e" opacity=".8"/>
+    <ellipse cx="105" cy="80" rx="2.5" ry="2" fill="#22c55e" opacity=".8"/>
+    <!-- Bow -->
+    <path d="M155 60 Q175 130 155 200" stroke="#8B4513" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <line x1="155" y1="62" x2="155" y2="198" stroke="#c9a227" stroke-width="1.5"/>
+    <!-- Arrow -->
+    <line x1="130" y1="125" x2="155" y2="125" stroke="#c9a227" stroke-width="2"/>
+    <path d="M153 120 L160 125 L153 130Z" fill="#c9a227"/>
+    <!-- Animal companion: wolf silhouette -->
+    <path d="M20 210 Q30 195 45 200 Q50 195 55 205 L55 225 Q45 230 35 225 Q25 230 20 220Z" fill="#2d4a2d" stroke="#22c55e" stroke-width="1" opacity=".7"/>
+    <circle cx="56" cy="202" r="3" fill="#2d4a2d" opacity=".7"/><!-- head -->
+    <circle cx="58" cy="200" r="1.5" fill="#22c55e" opacity=".8"/><!-- eye -->
+    <!-- Leaves falling -->
+    <path d="M40 80 Q45 85 42 92" stroke="#22c55e" stroke-width="2" fill="none" opacity=".5"/>
+    <path d="M170 100 Q175 105 172 112" stroke="#22c55e" stroke-width="2" fill="none" opacity=".4"/>
+  </svg>`,
+
+  ladro:`<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="pld" cx="30%" cy="40%"><stop offset="0%" stop-color="#1a1a2e"/><stop offset="100%" stop-color="#030306"/></radialGradient></defs>
+    <rect width="200" height="260" fill="url(#pld)"/>
+    <!-- Urban rooftop -->
+    <rect x="0" y="200" width="200" height="60" fill="#0a0a14"/>
+    <rect x="10" y="180" width="40" height="80" fill="#0f0f20"/>
+    <rect x="140" y="170" width="55" height="90" fill="#0d0d1c"/>
+    <rect x="60" y="190" width="70" height="70" fill="#0a0a18"/>
+    <!-- Moon reflection on wet roof -->
+    <ellipse cx="100" cy="205" rx="30" ry="5" fill="#1a1a4e" opacity=".6"/>
+    <!-- Figure half in shadow -->
+    <path d="M100 90 L80 240 L120 240Z" fill="#1a1a2e"/>
+    <path d="M88 110 L72 240 L128 240 L112 110Z" fill="#111"/>
+    <!-- Head with mask -->
+    <ellipse cx="100" cy="77" rx="16" ry="18" fill="#c4a882"/>
+    <rect x="84" y="77" width="32" height="12" rx="3" fill="#111"/><!-- mask -->
+    <ellipse cx="94" cy="80" rx="3" ry="2" fill="#60a5fa" opacity=".9"/>
+    <ellipse cx="106" cy="80" rx="3" ry="2" fill="#60a5fa" opacity=".9"/>
+    <!-- Hood/cowl -->
+    <path d="M84 77 Q100 55 116 77" stroke="#2d2d4e" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <!-- Daggers -->
+    <line x1="60" y1="130" x2="75" y2="160" stroke="#888" stroke-width="4"/>
+    <path d="M62 128 L70 125 L70 133Z" fill="#aaa"/>
+    <line x1="140" y1="125" x2="128" y2="158" stroke="#888" stroke-width="4"/>
+    <path d="M138 123 L132 118 L130 126Z" fill="#aaa"/>
+    <!-- Smoke/mist at feet -->
+    <path d="M60 240 Q100 230 140 240 Q150 245 140 250 Q100 260 60 250 Q50 245 60 240Z" fill="#1a1a3e" opacity=".5"/>
+    <!-- Stars (few) -->
+    <circle cx="25" cy="25" r="1" fill="white" opacity=".6"/>
+    <circle cx="170" cy="40" r="1.5" fill="white" opacity=".5"/>
+    <circle cx="150" cy="20" r="1" fill="white" opacity=".7"/>
+  </svg>`,
+
+  chierico:`<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="pch" cx="50%" cy="20%"><stop offset="0%" stop-color="#4a3500"/><stop offset="100%" stop-color="#0d0a00"/></radialGradient></defs>
+    <rect width="200" height="260" fill="url(#pch)"/>
+    <!-- Divine rays -->
+    <path d="M100 0 L105 80" stroke="#fde68a" stroke-width="1" opacity=".3"/>
+    <path d="M100 0 L140 90" stroke="#fde68a" stroke-width="1" opacity=".2"/>
+    <path d="M100 0 L60 90" stroke="#fde68a" stroke-width="1" opacity=".2"/>
+    <path d="M100 0 L170 100" stroke="#fde68a" stroke-width="1" opacity=".15"/>
+    <path d="M100 0 L30 100" stroke="#fde68a" stroke-width="1" opacity=".15"/>
+    <!-- Halo -->
+    <circle cx="100" cy="55" r="35" fill="none" stroke="#fde68a" stroke-width="1.5" opacity=".4"/>
+    <circle cx="100" cy="55" r="30" fill="none" stroke="#fde68a" stroke-width="1" opacity=".2"/>
+    <!-- Robe -->
+    <path d="M100 90 L65 250 L135 250Z" fill="#f5f0e0"/>
+    <path d="M82 115 L62 250 L138 250 L118 115Z" fill="#fff"/>
+    <!-- Stole -->
+    <path d="M95 90 L88 200" stroke="#c9a227" stroke-width="6"/>
+    <path d="M105 90 L112 200" stroke="#c9a227" stroke-width="6"/>
+    <!-- Cross on stole -->
+    <rect x="95" y="140" width="10" height="16" fill="white"/>
+    <rect x="91" y="146" width="18" height="5" fill="white"/>
+    <!-- Head -->
+    <ellipse cx="100" cy="72" rx="17" ry="19" fill="#d4a574"/>
+    <!-- Tonsure/white hair -->
+    <path d="M83 65 Q100 52 117 65 Q117 72 100 75 Q83 72 83 65Z" fill="#e8d5b0"/>
+    <!-- Eyes (serene) -->
+    <ellipse cx="94" cy="72" rx="2.5" ry="2" fill="#4a3000"/>
+    <ellipse cx="106" cy="72" rx="2.5" ry="2" fill="#4a3000"/>
+    <!-- Staff with holy symbol -->
+    <line x1="145" y1="250" x2="148" y2="90" stroke="#8B6914" stroke-width="5"/>
+    <circle cx="148" cy="82" r="14" fill="none" stroke="#fde68a" stroke-width="2"/>
+    <rect x="142" y="76" width="12" height="18" fill="#fde68a" opacity=".8"/>
+    <rect x="139" y="82" width="18" height="5" fill="#fde68a" opacity=".8"/>
+  </svg>`,
+
+  paladino:`<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="ppl" cx="50%" cy="25%"><stop offset="0%" stop-color="#1e3a5f"/><stop offset="100%" stop-color="#050a14"/></radialGradient></defs>
+    <rect width="200" height="260" fill="url(#ppl)"/>
+    <!-- Divine light source top -->
+    <ellipse cx="100" cy="-10" rx="60" ry="40" fill="#60a5fa" opacity=".1"/>
+    <!-- Full plate armor body -->
+    <rect x="70" y="115" width="60" height="90" rx="5" fill="#4a5a6a"/>
+    <path d="M75 120 L100 130 L125 120 L125 165 L100 170 L75 165Z" fill="#5a6a7a" stroke="#93c5fd" stroke-width="1"/>
+    <!-- Cross on chest -->
+    <rect x="94" y="130" width="12" height="20" fill="#93c5fd" opacity=".7"/>
+    <rect x="88" y="138" width="24" height="6" fill="#93c5fd" opacity=".7"/>
+    <!-- Leg armor -->
+    <rect x="76" y="205" width="22" height="48" rx="3" fill="#4a5a6a"/>
+    <rect x="102" y="205" width="22" height="48" rx="3" fill="#4a5a6a"/>
+    <!-- Helmet -->
+    <rect x="80" y="60" width="40" height="50" rx="6" fill="#4a5a6a"/>
+    <rect x="83" y="78" width="34" height="10" rx="2" fill="#2d3a4a"/>
+    <rect x="85" y="55" width="30" height="14" rx="3" fill="#5a6a7a"/>
+    <!-- Plume blue/gold -->
+    <path d="M100 42 Q112 52 107 63" stroke="#60a5fa" stroke-width="4" fill="none"/>
+    <path d="M100 42 Q92 50 96 61" stroke="#c9a227" stroke-width="3" fill="none"/>
+    <!-- Holy sword raised -->
+    <line x1="148" y1="248" x2="152" y2="45" stroke="#93c5fd" stroke-width="5"/>
+    <ellipse cx="150" cy="43" rx="14" ry="5" fill="#c0c0c0" transform="rotate(-15,150,43)"/>
+    <rect x="146" y="44" width="8" height="4" fill="#c9a227" transform="rotate(-15,150,46)"/>
+    <!-- Glow on sword -->
+    <line x1="148" y1="248" x2="152" y2="45" stroke="#93c5fd" stroke-width="1" opacity=".5"/>
+    <!-- Shield -->
+    <path d="M40 110 L65 100 L75 180 L40 200Z" fill="#4a5a6a" stroke="#93c5fd" stroke-width="2"/>
+    <path d="M45 122 L63 114 L71 176 L45 192Z" fill="#3a4a5a"/>
+    <text x="57" y="150" text-anchor="middle" font-size="18" fill="#60a5fa" opacity=".7">✦</text>
+    <!-- Arm armor -->
+    <rect x="59" y="115" width="13" height="55" rx="4" fill="#4a5a6a"/>
+    <rect x="128" y="115" width="13" height="45" rx="4" fill="#4a5a6a" transform="rotate(-10,134,137)"/>
+  </svg>`,
+
+  bardo:`<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="pbd" cx="50%" cy="35%"><stop offset="0%" stop-color="#5a1a5a"/><stop offset="100%" stop-color="#0d050d"/></radialGradient></defs>
+    <rect width="200" height="260" fill="url(#pbd)"/>
+    <!-- Stage / spotlight -->
+    <path d="M100 0 L50 260 L150 260Z" fill="rgba(212,167,255,.04)"/>
+    <!-- Elegant costume -->
+    <path d="M100 92 L68 250 L132 250Z" fill="#3d1a5e"/>
+    <path d="M85 112 L64 250 L136 250 L115 112Z" fill="#4a2070"/>
+    <!-- Cape/cloak diagonal -->
+    <path d="M100 92 L40 200 L80 220 L115 115Z" fill="#2d1040" stroke="#d8b4fe" stroke-width="1"/>
+    <!-- Head -->
+    <ellipse cx="100" cy="77" rx="16" ry="18" fill="#d4a574"/>
+    <!-- Fancy hat with feather -->
+    <ellipse cx="100" cy="62" rx="24" ry="7" fill="#2d1040"/>
+    <path d="M100 62 L95 30 L103 38" fill="#2d1040" stroke="#d8b4fe" stroke-width="1"/>
+    <!-- Feather in hat -->
+    <path d="M118 55 Q130 30 120 20 Q115 35 118 55" fill="#d8b4fe" opacity=".8"/>
+    <!-- Eyes (charming) -->
+    <ellipse cx="94" cy="78" rx="2.5" ry="2" fill="#581c87"/>
+    <ellipse cx="106" cy="78" rx="2.5" ry="2" fill="#581c87"/>
+    <ellipse cx="94" cy="77" rx="1" ry="1" fill="white"/><ellipse cx="106" cy="77" rx="1" ry="1" fill="white"/>
+    <!-- Smile -->
+    <path d="M96 85 Q100 88 104 85" stroke="#c4a882" stroke-width="1.5" fill="none"/>
+    <!-- Lute -->
+    <ellipse cx="148" cy="160" rx="22" ry="28" fill="#8B4513"/>
+    <line x1="148" y1="132" x2="145" y2="80" stroke="#6b3410" stroke-width="6"/>
+    <ellipse cx="148" cy="155" rx="5" ry="5" fill="#5a2d0a"/>
+    <!-- Strings -->
+    <line x1="133" y1="135" x2="133" y2="188" stroke="#fde68a" stroke-width="1" opacity=".7"/>
+    <line x1="140" y1="133" x2="140" y2="188" stroke="#fde68a" stroke-width="1" opacity=".7"/>
+    <line x1="148" y1="133" x2="148" y2="188" stroke="#fde68a" stroke-width="1" opacity=".7"/>
+    <line x1="156" y1="133" x2="156" y2="188" stroke="#fde68a" stroke-width="1" opacity=".7"/>
+    <!-- Music notes -->
+    <text x="45" y="90" font-size="16" fill="#d8b4fe" opacity=".5">♪</text>
+    <text x="165" y="70" font-size="12" fill="#d8b4fe" opacity=".4">♫</text>
+    <text x="35" y="140" font-size="10" fill="#d8b4fe" opacity=".3">♩</text>
+  </svg>`,
+
+  druido:`<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="pdr" cx="50%" cy="50%"><stop offset="0%" stop-color="#1a2a0a"/><stop offset="100%" stop-color="#050a02"/></radialGradient></defs>
+    <rect width="200" height="260" fill="url(#pdr)"/>
+    <!-- Roots from ground -->
+    <path d="M60 260 Q65 220 80 200" stroke="#2d4a1a" stroke-width="4" fill="none"/>
+    <path d="M140 260 Q135 215 120 198" stroke="#2d4a1a" stroke-width="4" fill="none"/>
+    <path d="M100 260 Q100 230 100 210" stroke="#2d4a1a" stroke-width="6" fill="none"/>
+    <!-- Nature robe -->
+    <path d="M100 92 L62 255 L138 255Z" fill="#1a3d0a"/>
+    <path d="M84 115 L58 255 L142 255 L116 115Z" fill="#224d12"/>
+    <!-- Leaves on robe -->
+    <ellipse cx="80" cy="160" rx="8" ry="12" fill="#15803d" transform="rotate(-20,80,160)" opacity=".7"/>
+    <ellipse cx="120" cy="175" rx="7" ry="10" fill="#16a34a" transform="rotate(15,120,175)" opacity=".7"/>
+    <ellipse cx="90" cy="200" rx="9" ry="13" fill="#15803d" transform="rotate(-10,90,200)" opacity=".6"/>
+    <!-- Head with wooden circlet -->
+    <ellipse cx="100" cy="74" rx="17" ry="19" fill="#c4a882"/>
+    <path d="M83 68 Q100 56 117 68" stroke="#6b3410" stroke-width="6" fill="none"/>
+    <circle cx="100" cy="60" r="5" fill="#22c55e"/>
+    <!-- Eyes (animal-like) -->
+    <ellipse cx="93" cy="75" rx="3" ry="2" fill="#16a34a"/>
+    <ellipse cx="107" cy="75" rx="3" ry="2" fill="#16a34a"/>
+    <!-- Staff with antler -->
+    <line x1="147" y1="255" x2="145" y2="80" stroke="#6b3410" stroke-width="5"/>
+    <path d="M145 82 Q135 65 125 55" stroke="#6b3410" stroke-width="3" fill="none"/>
+    <path d="M145 82 Q150 65 158 55" stroke="#6b3410" stroke-width="3" fill="none"/>
+    <path d="M125 56 Q120 48 118 42" stroke="#6b3410" stroke-width="2" fill="none"/>
+    <path d="M158 56 Q163 48 165 42" stroke="#6b3410" stroke-width="2" fill="none"/>
+    <!-- Owl on shoulder -->
+    <ellipse cx="65" cy="120" rx="10" ry="13" fill="#4a3d1a"/>
+    <circle cx="62" cy="113" r="4" fill="#6b5a28"/>
+    <circle cx="68" cy="113" r="4" fill="#6b5a28"/>
+    <circle cx="62" cy="113" r="2" fill="#fde68a"/>
+    <circle cx="68" cy="113" r="2" fill="#fde68a"/>
+    <!-- Glowing leaves floating -->
+    <ellipse cx="30" cy="80" rx="5" ry="8" fill="#22c55e" transform="rotate(-30,30,80)" opacity=".5"/>
+    <ellipse cx="175" cy="95" rx="4" ry="7" fill="#16a34a" transform="rotate(20,175,95)" opacity=".4"/>
+  </svg>`,
+
+  barbaro:`<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="pbb" cx="50%" cy="40%"><stop offset="0%" stop-color="#5a1a0a"/><stop offset="100%" stop-color="#0d0502"/></radialGradient></defs>
+    <rect width="200" height="260" fill="url(#pbb)"/>
+    <!-- Fire/rage aura at base -->
+    <path d="M60 240 Q80 210 100 230 Q120 210 140 240" stroke="#ef4444" stroke-width="3" fill="none" opacity=".7"/>
+    <path d="M50 255 Q75 220 100 240 Q125 220 150 255" stroke="#f97316" stroke-width="2" fill="none" opacity=".5"/>
+    <!-- Massive body - fur/leather -->
+    <path d="M100 95 L58 255 L142 255Z" fill="#2d1a0a"/>
+    <path d="M82 120 L50 255 L150 255 L118 120Z" fill="#3d2212"/>
+    <!-- Fur on shoulders -->
+    <path d="M68 100 Q45 120 50 150" stroke="#5a3d28" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <path d="M132 100 Q155 120 150 150" stroke="#5a3d28" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <!-- Head - fierce -->
+    <ellipse cx="100" cy="72" rx="22" ry="24" fill="#c4905a"/>
+    <!-- Wild hair -->
+    <path d="M78 60 Q100 30 122 60" stroke="#3d2808" stroke-width="10" fill="none"/>
+    <path d="M80 58 Q70 35 75 25 Q80 40 82 55" fill="#3d2808"/>
+    <path d="M120 58 Q130 35 125 25 Q120 40 118 55" fill="#3d2808"/>
+    <!-- Battle scar -->
+    <path d="M88 65 L94 78" stroke="#8b2020" stroke-width="2"/>
+    <!-- Eyes (fierce) -->
+    <ellipse cx="91" cy="71" rx="4" ry="3" fill="#7c1a1a"/>
+    <ellipse cx="109" cy="71" rx="4" ry="3" fill="#7c1a1a"/>
+    <ellipse cx="91" cy="70" rx="2" ry="1.5" fill="#ef4444"/>
+    <ellipse cx="109" cy="70" rx="2" ry="1.5" fill="#ef4444"/>
+    <!-- Battle axe raised -->
+    <line x1="148" y1="255" x2="158" y2="50" stroke="#5a3d28" stroke-width="7"/>
+    <path d="M140 45 Q160 35 170 55 L158 60 Z" fill="#888" stroke="#aaa" stroke-width="1"/>
+    <path d="M160 45 Q180 50 175 65 L163 58 Z" fill="#777"/>
+    <!-- War paint -->
+    <path d="M85 68 Q90 72 95 68" stroke="#ef4444" stroke-width="2" fill="none"/>
+    <path d="M105 68 Q110 72 115 68" stroke="#ef4444" stroke-width="2" fill="none"/>
+  </svg>`,
+
+  monaco:`<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="pmn" cx="50%" cy="30%"><stop offset="0%" stop-color="#2a1a0a"/><stop offset="100%" stop-color="#06040a"/></radialGradient></defs>
+    <rect width="200" height="260" fill="url(#pmn)"/>
+    <!-- Ki energy rings -->
+    <circle cx="100" cy="130" r="60" fill="none" stroke="#fbbf24" stroke-width="1" opacity=".2"/>
+    <circle cx="100" cy="130" r="80" fill="none" stroke="#fbbf24" stroke-width="1" opacity=".1"/>
+    <!-- Simple robe - monk habit -->
+    <path d="M100 92 L70 250 L130 250Z" fill="#2d2010"/>
+    <path d="M86 115 L64 250 L136 250 L114 115Z" fill="#3d2c18"/>
+    <!-- Belt -->
+    <rect x="68" y="150" width="64" height="7" rx="2" fill="#8B6914"/>
+    <!-- Head - shaved or simple -->
+    <ellipse cx="100" cy="74" rx="18" ry="19" fill="#c4905a"/>
+    <!-- Shaved head shine -->
+    <ellipse cx="95" cy="64" rx="8" ry="5" fill="#d4a574" opacity=".4"/>
+    <!-- Eyes (focused) -->
+    <ellipse cx="93" cy="75" rx="2.5" ry="2" fill="#2d1a08"/>
+    <ellipse cx="107" cy="75" rx="2.5" ry="2" fill="#2d1a08"/>
+    <!-- Serene expression -->
+    <path d="M95 83 Q100 86 105 83" stroke="#b08040" stroke-width="1.5" fill="none"/>
+    <!-- Fighting stance - one arm extended -->
+    <path d="M68 115 L40 150" stroke="#2d2010" stroke-width="10" stroke-linecap="round"/>
+    <path d="M40 150 L25 135" stroke="#c4905a" stroke-width="7" stroke-linecap="round"/><!-- hand -->
+    <!-- Other arm -->
+    <path d="M132 115 L150 145" stroke="#2d2010" stroke-width="10" stroke-linecap="round"/>
+    <!-- Ki aura hands -->
+    <circle cx="25" cy="133" r="10" fill="none" stroke="#fbbf24" stroke-width="2" opacity=".6"/>
+    <circle cx="25" cy="133" r="5" fill="#fbbf24" opacity=".3"/>
+    <!-- Sandals visible -->
+    <ellipse cx="83" cy="252" rx="12" ry="5" fill="#5a3d28"/>
+    <ellipse cx="117" cy="252" rx="12" ry="5" fill="#5a3d28"/>
+  </svg>`,
+
+  stregone:`<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="psg" cx="50%" cy="30%"><stop offset="0%" stop-color="#4a0a2a"/><stop offset="100%" stop-color="#0d0208"/></radialGradient></defs>
+    <rect width="200" height="260" fill="url(#psg)"/>
+    <!-- Wild energy crackles -->
+    <path d="M100 50 L115 90 L100 80 L110 120" stroke="#ec4899" stroke-width="2" fill="none" opacity=".6"/>
+    <path d="M100 50 L85 88 L100 78 L90 118" stroke="#f472b6" stroke-width="2" fill="none" opacity=".5"/>
+    <path d="M100 50 L130 100" stroke="#ec4899" stroke-width="1" opacity=".4"/>
+    <path d="M100 50 L70 98" stroke="#f472b6" stroke-width="1" opacity=".4"/>
+    <!-- Robe with wild patterns -->
+    <path d="M100 90 L62 252 L138 252Z" fill="#2d0a1a"/>
+    <path d="M84 112 L58 252 L142 252 L116 112Z" fill="#3d1025"/>
+    <!-- Chaos patterns on robe -->
+    <path d="M88 150 Q100 145 112 155 Q100 165 88 155Z" fill="#be185d" opacity=".5"/>
+    <path d="M82 190 Q100 185 118 195 Q100 205 82 195Z" fill="#ec4899" opacity=".3"/>
+    <!-- Head - wild -->
+    <ellipse cx="100" cy="74" rx="17" ry="19" fill="#c4905a"/>
+    <!-- Wild hair with energy -->
+    <path d="M83 64 Q78 40 72 30 Q82 48 83 62" fill="#2d1025"/>
+    <path d="M117 64 Q122 40 128 30 Q118 48 117 62" fill="#2d1025"/>
+    <path d="M90 60 Q88 40 92 28 Q93 44 92 58" fill="#3d1535"/>
+    <path d="M110 60 Q112 40 108 28 Q107 44 108 58" fill="#3d1535"/>
+    <!-- Wild eyes -->
+    <ellipse cx="93" cy="74" rx="3.5" ry="3" fill="#be185d"/>
+    <ellipse cx="107" cy="74" rx="3.5" ry="3" fill="#be185d"/>
+    <circle cx="93" cy="73" r="1.5" fill="white"/><circle cx="107" cy="73" r="1.5" fill="white"/>
+    <!-- Energy orb in hand -->
+    <circle cx="148" cy="145" r="20" fill="none" stroke="#ec4899" stroke-width="2"/>
+    <circle cx="148" cy="145" r="14" fill="#be185d" opacity=".4"/>
+    <circle cx="148" cy="145" r="8" fill="#f472b6" opacity=".7"/>
+    <circle cx="148" cy="145" r="4" fill="white" opacity=".8"/>
+    <!-- Energy lines from orb to hand -->
+    <path d="M128 145 L115 145" stroke="#ec4899" stroke-width="2"/>
+  </svg>`,
+};
+
+/* Default SVG for unknown classes */
+function getPortraitSvg(classe,razza){
+  const cl=(classe||'').toLowerCase().trim();
+  const key=Object.keys(CLASS_SVG).find(k=>cl.includes(k));
+  if(key)return CLASS_SVG[key];
+  // Generic fallback
+  const colors={
+    '--obs':'#0a0a12','--gold':'#c9a227','--bone':'#e8d5b0'
+  };
+  return `<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="260" fill="#0d0d1c"/>
+    <text x="100" y="130" text-anchor="middle" font-size="60" fill="#c9a227" opacity=".6">⚔</text>
+    <text x="100" y="180" text-anchor="middle" font-size="14" fill="#7a7a8a" font-family="Cinzel,serif">${esc(classe||'?')}</text>
+  </svg>`;
+}
+
+/* ─── Party rendering ─── */
+const equipOpen=new Set();
+let lastChars=null;
+function toggleSection(key,store){
+  if(store.has(key))store.delete(key);else store.add(key);
+  if(lastChars)renderParty(lastChars);
+}
+
+function renderParty(chars){
+  lastChars=chars;
+  const el=document.getElementById('party');
+  if(!chars||!Object.keys(chars).length){
+    el.innerHTML='<div class="no-party"><div class="no-party-rune">⚜</div><span>Nessun personaggio</span></div>';
+    return;
+  }
+  el.innerHTML=Object.entries(chars).map(([k,c])=>{
+    const n=c.nome||k,cl=c.classe||'',ra=c.razza||'',lv=c.livello;
+    const hp=c.hp||{},has=hp.max!=null,p=has?pct(hp.correnti,hp.max):100;
+    const stats=Object.entries(c.stats||{}).slice(0,6);
+    const inv=Array.isArray(c.inventario)?c.inventario:[];
+    const quests=Array.isArray(c.quest_attive)?c.quest_attive:[];
+    const hbgColor=has?hbg(hp.correnti,hp.max):'var(--hp-s)';
+    const hcls2=has?hcls(hp.correnti,hp.max):'';
+    return `<div class="pcard">
+      <div class="pcard-top">
+        <div class="pcard-portrait">${getPortraitSvg(cl,ra)}</div>
+        <div class="pcard-meta">
+          <div class="pcard-name">${esc(n)}</div>
+          <div class="pcard-class">${esc([cl,ra].filter(Boolean).join(' · '))}</div>
+          <div class="pcard-badges">
+            ${lv?`<span class="badge gold">Lv.${lv}</span>`:''}
+            ${c.ca!=null?`<span class="badge blue">CA ${c.ca}</span>`:''}
+            ${c.giocatore?`<span class="badge green">${esc(c.giocatore)}</span>`:''}
+          </div>
+          ${has?`<div style="margin-top:5px">
+            <div class="hp-row">
+              <div class="hp-bar"><div class="hp-fill ${hcls2}" style="width:${p}%;background:${hbgColor}"></div></div>
+              <span class="hp-text">${hp.correnti}/${hp.max}</span>
+            </div>
+          </div>`:''}
+        </div>
+      </div>
+      ${stats.length?`<div class="stats-row">${stats.map(([sk,sv])=>`<div class="stat"><div class="stat-v">${sv}</div><div class="stat-k">${esc(sk)}</div></div>`).join('')}</div>`:''}
+      ${inv.length?`<div class="inv-section">
+        <button class="inv-toggle" onclick="toggleSection('eq_${k.replace(/'/g,'_')}',equipOpen)">
+          <span class="inv-arrow">${equipOpen.has('eq_'+k)?'▾':'▸'}</span>Equipaggiamento<span class="inv-count">${inv.length} oggetti</span>
+        </button>
+        ${equipOpen.has('eq_'+k)?`<div class="inv-items">${inv.map((item,i)=>`<div class="inv-item ${i<3?'special':''}">${esc(item)}</div>`).join('')}</div>`:''}
+      </div>`:''}
+      ${quests.length?`<div class="quest-section">
+        <button class="inv-toggle" onclick="toggleSection('q_${k.replace(/'/g,'_')}',equipOpen)" style="color:var(--arcane-light)">
+          <span class="inv-arrow" style="color:var(--arcane-b)">${equipOpen.has('q_'+k)?'▾':'▸'}</span>Quest attive<span class="inv-count">${quests.length}</span>
+        </button>
+        ${equipOpen.has('q_'+k)?quests.map(q=>`<div class="quest-item">${esc(q)}</div>`).join(''):''}
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
+
+/* ─── Center Panel: Portraits ─── */
+function renderPortraits(chars){
+  if(!chars||!Object.keys(chars).length){
+    return `<div class="no-party" style="min-height:200px"><div class="no-party-rune">✦</div><span>Nessun personaggio nella campagna</span></div>`;
+  }
+  const cards=Object.entries(chars).map(([k,c])=>{
+    const n=c.nome||k,cl=c.classe||'',ra=c.razza||'';
+    const hp=c.hp||{},has=hp.max!=null,p=has?pct(hp.correnti,hp.max):100;
+    const hbgColor=has?hbg(hp.correnti,hp.max):'var(--hp-s)';
+    return `<div class="portrait-panel">
+      ${getPortraitSvg(cl,ra)}
+      <div class="portrait-label">
+        <div class="portrait-name">${esc(n)}</div>
+        <div class="portrait-sub">${esc([cl,ra,c.livello?'Lv.'+c.livello:''].filter(Boolean).join(' · '))}</div>
+        ${has?`<div class="portrait-hp">
+          <div class="portrait-hp-bar"><div class="portrait-hp-fill" style="width:${p}%;background:${hbgColor}"></div></div>
+          <span class="portrait-hp-val">${hp.correnti}/${hp.max}</span>
+        </div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="portraits-grid">${cards}</div>`;
+}
+
+/* ─── Center Panel: Scene ─── */
+function renderScene(state){
+  const mondo=state.mondo||{};
+  const loc=mondo.locazione||'Luogo sconosciuto';
+  const tempo=mondo.tempo||'';
+  const rawNpcs=Array.isArray(mondo.npcs_incontrati)?mondo.npcs_incontrati:[];
+  const trame=typeof mondo.stato_trame==='object'&&mondo.stato_trame?mondo.stato_trame:{};
+  const trameEntries=Object.entries(trame).filter(([,v])=>v);
+  const npcItems=rawNpcs.filter(Boolean).map(n=>{
+    if(typeof n==='string')return{nome:n,stato:''};
+    return{nome:n.nome||n.name||'?',stato:n.stato||n.ruolo||''};
+  });
+  return `<div class="scene-wrap">
+    <div class="scene-location">
+      <div class="scene-loc-icon">🗺</div>
+      <div class="scene-loc-name">${esc(loc)}</div>
+      ${tempo?`<div class="scene-tempo">${esc(tempo)}</div>`:''}
+    </div>
+    ${npcItems.length?`<div class="scene-section">
+      <div class="scene-sec-title">Personaggi in scena</div>
+      ${npcItems.map(n=>`<div class="scene-npc">${esc(n.nome)}${n.stato?`<span class="scene-npc-stato">${esc(n.stato)}</span>`:''}</div>`).join('')}
+    </div>`:''}
+    ${trameEntries.length?`<div class="scene-section">
+      <div class="scene-sec-title">Trame attive</div>
+      ${trameEntries.map(([k,v])=>`<div class="scene-trama"><div class="scene-trama-k">${esc(k)}</div><div class="scene-trama-v">${esc(typeof v==='string'?v:JSON.stringify(v))}</div></div>`).join('')}
+    </div>`:''}
+  </div>`;
+}
+
+/* ─── Center Panel: Combat ─── */
+function renderCombat(comb,chars){
+  if(!comb?.attivo||!comb.ordine_iniziativa?.length){
+    return `<div class="no-party"><div class="no-party-rune">⚔</div><span>Nessun combattimento attivo</span></div>`;
+  }
+  const combattenti=comb.ordine_iniziativa;
+  // Initiative list
+  let html='<div class="combat-wrap"><div class="init-list">';
+  combattenti.forEach((c,i)=>{
+    const act=i===comb.indice_corrente,hp=c.hp||{},has=hp.max!=null,pp=has?pct(hp.correnti,hp.max):100,dead=has&&hp.correnti===0;
+    const em=c.emoji||defEmoji(c.tipo),bg=has?hbg(hp.correnti,hp.max):'var(--hp-s)';
+    html+=`<div class="irow ${act?'act':''} ${dead?'dead':''}">
+      <span class="iarrow">${act?'▶':''}</span>
+      <span class="iemoji">${dead?'💀':em}</span>
+      <div class="iinfo">
+        <div class="iname">${esc(c.nome)}</div>
+        <div class="isub"><span class="tbadge ${esc(c.tipo)}">${esc(c.tipo)}</span><span class="mono" style="font-size:.5rem;color:var(--ash)">ini ${c.iniziativa}</span></div>
+      </div>
+      ${has?`<div class="ihpr"><span class="ihpv">${hp.correnti}/${hp.max}</span><div class="minibar"><div class="minifill" style="width:${pp}%;background:${bg}"></div></div></div>`:''}
+    </div>`;
+  });
+  html+='</div>';
+  // Grid
+  const cellMap={};
+  combattenti.forEach((c,i)=>{
+    const x=c.x!=null?c.x:i%W,y=c.y!=null?c.y:Math.floor(i/W);
+    if(x>=0&&x<W&&y>=0&&y<H){const key=x+','+y;if(!cellMap[key])cellMap[key]=[];cellMap[key].push({...c,_i:i})}
+  });
+  html+=`<div class="cgrid-wrap"><div><div class="cgrid" style="grid-template-columns:repeat(${W},46px)">`;
+  for(let r=0;r<H;r++)for(let col=0;col<W;col++){
+    const key=col+','+r,toks=cellMap[key]||[],t=toks[0],act=toks.some(x=>x._i===comb.indice_corrente);
+    const em=t?(t.emoji||defEmoji(t.tipo)):'',dead=t&&t.hp&&t.hp.correnti===0;
+    html+=`<div class="gcell ${toks.length?'tok':''} ${act?'act':''}" title="${t?esc(t.nome)+(t.hp?' · HP '+t.hp.correnti+'/'+t.hp.max:''):col+','+r}">${t?(dead?'<span style="opacity:.3">💀</span>':em):''}${toks.length>1?`<span style="position:absolute;top:1px;right:2px;font-size:.38rem;color:var(--gold);font-family:'Share Tech Mono'">${toks.length}</span>`:''}<span class="gcoord">${col},${r}</span></div>`;
+  }
+  html+=`</div></div><div class="gleg"><div class="gleg-t">Token</div>`;
+  combattenti.forEach((c,i)=>{
+    const act=i===comb.indice_corrente,hp=c.hp||{},has=hp.max!=null,pp=has?pct(hp.correnti,hp.max):100,bg=has?hbg(hp.correnti,hp.max):'var(--hp-s)';
+    html+=`<div class="gleg-r"><span class="gleg-e">${c.emoji||defEmoji(c.tipo)}</span><span style="flex:1;font-size:.64rem;${act?'color:var(--gold)':''}">${esc(c.nome)}</span>${has?`<div class="gleg-b"><div class="gleg-f" style="width:${pp}%;background:${bg}"></div></div>`:''}</div>`;
+  });
+  html+=`</div></div></div>`;
+  return html;
+}
+
+/* ─── State polling ─── */
+async function pollState(){
+  try{
+    const r=await fetch(`http://localhost:${DASH_PORT}/api/state`,{signal:AbortSignal.timeout(2500)});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const{state}=await r.json();
+    document.getElementById('sdot').className='dot ok';
+    document.getElementById('slabel').textContent='Stato OK';
+    document.getElementById('cname').textContent=state.titolo||'';
+    document.getElementById('tinfo').textContent='Turno '+(state.turno||0)+' · '+(state.sistema||'dnd5e');
+    renderParty(state.personaggi||{});
+    // Dynamic center
+    const comb=state.combattimento;
+    const inCombat=comb?.attivo&&comb.ordine_iniziativa?.length>0;
+    const centerEl=document.getElementById('center');
+    const labelEl=document.getElementById('center-label');
+    const chipEl=document.getElementById('rchip');
+    if(inCombat){
+      labelEl.textContent='Combattimento';
+      chipEl.style.display='';
+      chipEl.textContent='RND '+comb.round;
+      centerEl.innerHTML=renderCombat(comb,state.personaggi);
+    }else{
+      labelEl.textContent='Scenario';
+      chipEl.style.display='none';
+      centerEl.innerHTML=renderScene(state);
+    }
+  }catch(e){
+    document.getElementById('sdot').className='dot err';
+    document.getElementById('slabel').textContent='Offline: '+e.message;
+  }
+}
+
+/* ─── WebSocket Chat ─── */
+let ws=null,wsReady=false,typingEl=null;
+const shownMsgIds=new Set();
+const msgs=[];
+let gmBuffer='',gmMsgEl=null;
+let skipNextUserMsg=null;
+
+function wsSetStatus(cls,text){
+  ['wsdot','wsdot2'].forEach(id=>document.getElementById(id).className='dot '+cls);
+  ['wslabel','wslabel2'].forEach(id=>document.getElementById(id).textContent=text);
+  document.getElementById('chatsend').disabled=cls!=='ok';
+}
+
+function scrollChat(){const el=document.getElementById('chatmsgs');el.scrollTop=el.scrollHeight}
+
+function msgId(m){
+  return m.__openclaw?.id || m.idempotencyKey || (m.role+':'+JSON.stringify(m.content).slice(0,120));
+}
+
+function processHistoryUpdate(messages){
+  const raw=(messages||[]).filter(m=>m.role==='user'||m.role==='assistant');
+  let added=0;
+  raw.forEach(m=>{
+    const id=msgId(m);
+    if(shownMsgIds.has(id))return;
+    shownMsgIds.add(id);
+    const txt=typeof m.content==='string'?m.content:(Array.isArray(m.content)?m.content.filter(b=>b.type==='text').map(b=>b.text).join('\n\n'):'');
+    if(!txt)return;
+    const rendered=m.role==='user'?esc(txt):md(txt);
+    if(m.role==='user'&&skipNextUserMsg===rendered){skipNextUserMsg=null;return;}
+    appendMsg(m.role==='user'?'user':'gm',rendered);
+    added++;
+  });
+  console.log('[CHAT] update shown='+shownMsgIds.size+' raw='+raw.length+' added='+added);
+  if(added>0)hideTyping();
+}
+
+function refreshChat(){
+  const sent=wsReady?!!wsSend('chat.history',{sessionKey:SESSION_KEY,limit:200}):false;
+  console.log('[CHAT] refresh wsReady='+wsReady+' wsSent='+sent);
+  fetch('/api/chat').then(r=>r.json()).then(data=>{
+    processHistoryUpdate(data.messages||[]);
+  }).catch(e=>console.error('[CHAT] fetch error:',e));
+}
+
+function appendMsg(role,htmlContent){
+  if(!htmlContent||!htmlContent.trim())return;
+  const el=document.getElementById('chatmsgs');
+  const d=document.createElement('div');
+  if(role==='user'){
+    d.className='rpg-bubble player';
+    d.innerHTML=`<div class="rp-emoji-fallback">⚔</div><div class="rp-body"><div class="rp-name">TU</div><div class="rp-text">${htmlContent}</div></div>`;
+  }else{
+    d.className='rpg-bubble gm-direct';
+    d.innerHTML=`<div class="rp-emoji-fallback">🎲</div><div class="rp-body"><div class="rp-name">GAME MASTER</div><div class="rp-text">${htmlContent}</div></div>`;
+  }
+  el.appendChild(d);
+  scrollChat();
+  msgs.push({role,htmlContent});
+}
+
+function showTyping(){
+  const el=document.getElementById('chatmsgs');
+  typingEl=document.createElement('div');
+  typingEl.className='typing-ind';
+  typingEl.textContent='● ● ●';
+  el.appendChild(typingEl);
+  scrollChat();
+}
+function hideTyping(){if(typingEl){typingEl.remove();typingEl=null;}}
+
+function handleGmChunk(text){
+  hideTyping();
+  if(!text)return;
+  const el=document.getElementById('chatmsgs');
+  gmBuffer+=text;
+  if(!gmMsgEl){
+    gmMsgEl=document.createElement('div');
+    gmMsgEl.className='rpg-bubble gm-direct';
+    gmMsgEl.innerHTML='<div class="rp-emoji-fallback">🎲</div><div class="rp-body"><div class="rp-name">GAME MASTER</div><div class="rp-text"></div></div>';
+    el.appendChild(gmMsgEl);
+  }
+  gmMsgEl.querySelector('.rp-text').innerHTML=md(gmBuffer);
+  scrollChat();
+}
+function flushGmMsg(){if(gmBuffer){msgs.push({role:'gm',htmlContent:md(gmBuffer)});}gmBuffer='';gmMsgEl=null;}
+
+function wsSend(method,params){
+  if(!ws||ws.readyState!==WebSocket.OPEN)return null;
+  const id=uuid();
+  ws.send(JSON.stringify({type:'req',id,method,params}));
+  return id;
+}
+function connectWS(){
+  if(ws&&(ws.readyState===WebSocket.OPEN||ws.readyState===WebSocket.CONNECTING))return;
+  wsSetStatus('warn','Connessione...');
+  try{ws=new WebSocket(WS_PROXY);}catch(e){wsSetStatus('err','WebSocket: '+e.message);return;}
+  ws.onopen=()=>wsSetStatus('warn','Autenticazione...');
+  ws.onmessage=(ev)=>{
+    let data;try{data=JSON.parse(ev.data);}catch{return;}
+    if(data.event==='proxy.connected'){wsReady=true;wsSetStatus('ok','Chat connessa');wsSend('chat.history',{sessionKey:SESSION_KEY,limit:200});return;}
+    if(data.ok===true&&Array.isArray(data.payload?.messages)){console.log('[CHAT] ws history msgs='+data.payload.messages.length);processHistoryUpdate(data.payload.messages);return;}
+  };
+  ws.onclose=()=>{wsReady=false;wsSetStatus('err','Disconnesso — riconnessione...');setTimeout(connectWS,3000);};
+  ws.onerror=()=>wsSetStatus('err','Errore proxy WS');
+}
+
+function sendChatMessage(text){
+  if(!wsReady||!text.trim())return;
+  const escaped=esc(text);
+  appendMsg('user',escaped);
+  skipNextUserMsg=escaped;
+  wsSend('chat.send',{sessionKey:SESSION_KEY,message:text,idempotencyKey:uuid()});
+  showTyping();
+  const ta=document.getElementById('chatinput');
+  ta.value='';ta.style.height='auto';
+}
+
+document.getElementById('chatsend').addEventListener('click',()=>sendChatMessage(document.getElementById('chatinput').value));
+document.getElementById('chatinput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChatMessage(e.target.value);}});
+document.getElementById('chatinput').addEventListener('input',e=>{e.target.style.height='auto';e.target.style.height=Math.min(e.target.scrollHeight,120)+'px';});
+
+refreshChat();
+setInterval(refreshChat,2500);
+pollState();
+setInterval(pollState,2500);
+connectWS();
+</script>
+</body>
+</html>

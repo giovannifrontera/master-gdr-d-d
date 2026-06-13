@@ -1,0 +1,42 @@
+# Salvataggi di partita e dati utente
+state/
+
+# Manuali GDR (copyright)
+manuali/
+
+# Wiki: dati indicizzati e LanceDB (non codice)
+wiki/memory/
+wiki/wiki/
+wiki/wiki-works/
+wiki/wiki-session.md
+wiki/.wiki-plugin-debug.log
+
+# PDF manuali GDR (copyright)
+wiki/pdf-inbox/
+
+# Dipendenze wiki-context-plugin
+wiki/plugins/wiki-context-plugin/node_modules/
+wiki/plugins/wiki-context-plugin/dist/
+
+# Note di sessione personali
+SESSIONE.md
+
+# Audio TTS generati
+*.wav
+
+# Log
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Superpowers internal state
+.superpowers/
+
+# Internal analysis / scratch files
+REPORT-*.md
+SELF-CONTAINMENT.md
+
+# Local superpowers docs (root-level only)
+/docs/

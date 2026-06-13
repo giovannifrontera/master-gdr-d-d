@@ -1,0 +1,22 @@
+{
+  "name": "master-dnd-plugin",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "OpenClaw plugin for D&D Game Master session state and rolling",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').copyFileSync('dist/index.js','index.js')\"",
+    "dev": "tsc --watch"
+  },
+  "openclaw": {
+    "extensions": ["./index.js"],
+    "pluginManifest": "openclaw.plugin.json",
+    "compatibility": ">=1.0.0",
+    "buildVersion": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "openclaw": "*",
+    "typescript": "^5.0.0"
+  }
+}
