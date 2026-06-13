@@ -1,42 +1,96 @@
+<div align="center">
+
 # Master GDR D&D
 
-OpenClaw plugin for running tabletop RPG campaigns with an AI Game Master.
+**AI Game Master for OpenClaw campaigns**
 
-The project combines persistent campaign state, dice rolling, structured combat, a browser dashboard, text-to-speech narration, and semantic RAG retrieval over your own rule notes or legally owned manuals.
+Persistent campaign state, structured combat, dice rolling, browser dashboard, voice narration, and semantic rulebook memory for tabletop RPG sessions.
 
-Although the default language and examples target D&D 5e, the engine is system-agnostic and can be used with Pathfinder, Cyberpunk RED, Call of Cthulhu, Fate, Lady Blackbird, or any ruleset you describe to the agent.
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-plugin-5B5BD6?style=for-the-badge)](https://openclaw.ai)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-AGPL--3.0-A42E2B?style=for-the-badge)](LICENSE)
 
-## What It Does
+`D&D 5e` . `Pathfinder` . `Cyberpunk RED` . `Call of Cthulhu` . `Fate` . `Any ruleset you describe`
 
-Master GDR D&D installs two OpenClaw plugins that work together:
+</div>
 
-| Plugin | Role |
+---
+
+## At a Glance
+
+| Capability | What it gives the Game Master |
 | --- | --- |
-| `master-dnd-plugin` | Core Game Master engine: campaign state, character sheets, dice, combat, narration, dashboard |
-| `wiki-context-plugin` | RAG injector: retrieves relevant wiki/rulebook context before each prompt |
+| Dice engine | Reliable rolls like `1d20+5`, `3d6`, advantage and disadvantage |
+| Persistent state | Campaigns, characters, quests, HP, inventory and world state survive across sessions |
+| Structured combat | Initiative order, damage/healing, active turns and grid positions |
+| Semantic memory | LanceDB retrieves relevant session logs, rules and wiki notes by meaning |
+| Dashboard | Browser view for party sheets, initiative and an 8x6 combat grid |
+| Voice narration | Optional Windows TTS for spoken narration |
+| System-agnostic play | Starts from D&D 5e, but adapts to other tabletop RPGs |
 
-The system keeps three memory layers active during play:
+## Why It Exists
+
+Most RPG chat bots can narrate a scene, but they lose campaign continuity. This project gives an OpenClaw agent the missing operational layer:
+
+- current campaign state in JSON
+- long-term semantic memory in LanceDB
+- rule/context retrieval before the model answers
+- tools for dice, sheets, combat, backups and narration
+
+The result is an AI Game Master that can keep track of the table instead of improvising from a blank prompt every turn.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Player[Player] --> OpenClaw[OpenClaw Agent]
+    OpenClaw --> GM[master-dnd-plugin]
+    OpenClaw --> WikiHook[wiki-context-plugin]
+
+    GM --> State[(JSON campaign state)]
+    GM --> Dashboard[Browser dashboard]
+    GM --> TTS[Windows TTS]
+    GM --> Tools[Dice, sheets, combat tools]
+
+    WikiHook --> WikiPy[wiki_context.py]
+    WikiPy --> Lance[(LanceDB vectors)]
+    WikiPy --> Notes[Wiki pages and rule notes]
+
+    State --> OpenClaw
+    Lance --> OpenClaw
+    Notes --> OpenClaw
+```
+
+## Memory Model
 
 | Layer | Storage | Purpose |
 | --- | --- | --- |
-| Campaign state | JSON files | Characters, quests, world state, initiative, combat positions |
-| Semantic memory | LanceDB vectors | Session logs, indexed rules, wiki extracts |
-| Immediate context | Prompt injection | Current state and relevant wiki snippets for the next answer |
+| Campaign state | `state/*.json` | Characters, quests, HP, inventory, world state, initiative |
+| Semantic memory | LanceDB | Session logs, extracted rules, wiki pages, campaign notes |
+| Immediate context | Prompt injection | Current state plus relevant wiki snippets before each answer |
 
-## Requirements
+## Plugins
 
-- OpenClaw 2026.5.28 or newer
-- Node.js 18 or newer
-- Python 3.10 or newer for the wiki RAG layer
-- Windows PowerShell for the provided one-command installer
+| Plugin | Role | Main files |
+| --- | --- | --- |
+| `master-dnd-plugin` | Core Game Master engine | `src/index.ts`, `index.js`, `dashboard.html` |
+| `wiki-context-plugin` | RAG context injector | `wiki/plugins/wiki-context-plugin/` |
 
-Python dependencies can be installed by the plugin tool `rpg_install_dependencies`, or manually:
+Both plugins are installed into OpenClaw and work together during every conversation.
 
-```bash
-pip install -r wiki/requirements.txt
-```
+## Quick Start
 
-## Installation
+### Requirements
+
+| Dependency | Version |
+| --- | --- |
+| OpenClaw | 2026.5.28 or newer |
+| Node.js | 18 or newer |
+| Python | 3.10 or newer |
+| Shell | Windows PowerShell for `install.ps1` |
+
+### Install
 
 ```powershell
 git clone https://github.com/giovannifrontera/master-gdr-d-d.git
@@ -44,18 +98,50 @@ cd master-gdr-d-d
 .\install.ps1
 ```
 
-The installer registers both OpenClaw plugins:
+The installer registers both plugins:
 
 ```powershell
 openclaw plugin add .\master-dnd-plugin
 openclaw plugin add .\wiki\plugins\wiki-context-plugin
 ```
 
-Campaign saves are written to `state/` by default. This directory is intentionally ignored by Git.
+Python dependencies can also be installed manually:
+
+```bash
+pip install -r wiki/requirements.txt
+```
+
+## Dashboard
+
+After starting a campaign, open:
+
+```text
+http://localhost:7332/
+```
+
+The dashboard is designed for the live table:
+
+| View | Contents |
+| --- | --- |
+| Party | Character sheets, HP, stats, inventory and avatars |
+| Map | Initiative order plus 8x6 combat grid |
+| Chat | Browser interface for the Game Master agent |
+
+## Tool Surface
+
+All `rpg_*` tools also expose a `dnd_*` alias.
+
+| Category | Tools |
+| --- | --- |
+| Campaign | `rpg_start_run`, `rpg_load_state`, `rpg_list_runs`, `rpg_save_state`, `rpg_update_state`, `rpg_restore_backup` |
+| Characters | `rpg_create_character`, `rpg_get_sheet` |
+| Dice and combat | `rpg_roll`, `rpg_combat_start`, `rpg_combat_damage`, `rpg_combat_next_turn`, `rpg_combat_end`, `rpg_set_combat_position` |
+| Memory and rules | `rpg_log_turn`, `rpg_scan_manuals`, `rpg_wiki_process_raw`, `rpg_check_wiki`, `rpg_install_dependencies` |
+| Voice | `rpg_narrate` |
 
 ## Optional Configuration
 
-All configuration keys are optional. Add overrides to your OpenClaw configuration only when you need custom paths or ports.
+All keys are optional. Add overrides only when you need custom paths or ports.
 
 ```json
 {
@@ -84,47 +170,6 @@ All configuration keys are optional. Add overrides to your OpenClaw configuratio
   }
 }
 ```
-
-## Main Tools
-
-All `rpg_*` tools also expose a `dnd_*` alias.
-
-| Tool | Description |
-| --- | --- |
-| `rpg_start_run` | Start a new campaign |
-| `rpg_load_state` | Resume an existing campaign |
-| `rpg_list_runs` | List saved campaigns |
-| `rpg_save_state` | Save current state manually |
-| `rpg_update_state` | Patch selected state fields |
-| `rpg_create_character` | Create or update a character sheet |
-| `rpg_get_sheet` | Read a character sheet |
-| `rpg_roll` | Roll dice such as `1d20+5`, `3d6`, advantage/disadvantage |
-| `rpg_combat_start` | Start structured combat with initiative |
-| `rpg_combat_damage` | Apply damage or healing |
-| `rpg_combat_next_turn` | Advance initiative |
-| `rpg_combat_end` | End structured combat |
-| `rpg_set_combat_position` | Place a combatant on the dashboard grid |
-| `rpg_log_turn` | Persist a turn summary to vector memory |
-| `rpg_narrate` | Play narration through Windows TTS |
-| `rpg_scan_manuals` | Index PDFs from `manuali/` into the wiki |
-| `rpg_wiki_process_raw` | Promote extracted raw wiki files into the searchable index |
-| `rpg_check_wiki` | Run wiki/RAG diagnostics |
-| `rpg_install_dependencies` | Install Python dependencies |
-| `rpg_restore_backup` | Restore an automatic campaign backup |
-
-## Dashboard
-
-After starting a campaign, open:
-
-```text
-http://localhost:7332/
-```
-
-The dashboard shows:
-
-- Party sheets with HP, stats, inventory and avatars
-- Initiative order and an 8x6 combat grid
-- Browser chat interface for the Game Master agent
 
 ## Repository Layout
 
