@@ -13,13 +13,13 @@ Gestione stato persistente, dadi, combattimento strutturato, memoria vettoriale 
 ### 1. Clona il repository
 
 ```bash
-git clone https://github.com/<user>/progetto-master-gdr-d&d.git
+git clone https://github.com/giovannifrontera/master-gdr-d-d.git
 ```
 
 ### 2. Installa il plugin in OpenClaw
 
 ```bash
-openclaw plugins install ./progetto-master-gdr-d&d/master-dnd-plugin
+openclaw plugin add ./master-gdr-d-d/master-dnd-plugin
 ```
 
 ### 3. Configura OpenClaw
@@ -104,4 +104,4 @@ Il plugin è system-agnostic. Funziona con qualsiasi GDR: D&D 5e, Pathfinder, Cy
 
 ## Licenza
 
-MIT
+AGPL-3.0. Vedi `../LICENSE`.

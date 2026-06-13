@@ -206,11 +206,12 @@ export default definePluginEntry({
       "rpg_restore_backup", "dnd_restore_backup",
       "rpg_narrate", "dnd_narrate",
       "rpg_wiki_process_raw", "dnd_wiki_process_raw",
-      "rpg_check_wiki", "dnd_check_wiki"
+      "rpg_check_wiki", "dnd_check_wiki",
+      "rpg_set_combat_position", "dnd_set_combat_position"
     ]
   },
 
-  register(api) {
+  register(api: any) {
     const cfg = ((api as Record<string, unknown>).pluginConfig ?? {}) as {
       stateDirectory?: string;
       wikiEnabled?: boolean;
@@ -441,7 +442,7 @@ export default definePluginEntry({
     // Register combined before_prompt_build hook
     api.on(
       "before_prompt_build",
-      async (event, ctx) => {
+      async (event: any, ctx: any) => {
         const sessionKey = (ctx as any)?.sessionKey;
         const currentSessionKey = sessionKey || "global";
 
@@ -1629,6 +1630,50 @@ export default definePluginEntry({
         }
       }));
 
+      // 16b. Tool: rpg_set_combat_position (alias: dnd_set_combat_position)
+      registerWithAlias("rpg_set_combat_position", (ctx) => ({
+        name: "rpg_set_combat_position",
+        label: "Set Combat Position",
+        description: "Aggiorna la posizione (x, y) di un combattente sulla griglia della dashboard (0-indexed, max 7,5). Puo anche impostare un emoji personalizzato per il token.",
+        parameters: {
+          type: "object",
+          properties: {
+            run_id: { type: "string", description: "ID della run attiva (opzionale)." },
+            nome: { type: "string", description: "Nome del combattente da spostare." },
+            x: { type: "integer", description: "Colonna della griglia (0-7)." },
+            y: { type: "integer", description: "Riga della griglia (0-5)." },
+            emoji: { type: "string", description: "Emoji opzionale da mostrare come token." }
+          },
+          required: ["nome", "x", "y"]
+        },
+        execute: async (_toolCallId: string, rawParams: any) => {
+          try {
+            const runId = rawParams.run_id || getActiveRunId((ctx as any)?.sessionKey);
+            if (!runId) return { status: "error", message: "Nessuna run attiva trovata." };
+            const state = loadState(runId);
+            if (!state.combattimento?.attivo) return { status: "error", message: "Nessun combattimento attivo." };
+
+            const idx = state.combattimento.ordine_iniziativa.findIndex(
+              (c: any) => c.nome.toLowerCase() === String(rawParams.nome).toLowerCase()
+            );
+            if (idx === -1) {
+              return { status: "error", message: `Combattente '${rawParams.nome}' non trovato nell'iniziativa.` };
+            }
+
+            const x = Math.max(0, Math.min(7, Number(rawParams.x)));
+            const y = Math.max(0, Math.min(5, Number(rawParams.y)));
+            state.combattimento.ordine_iniziativa[idx].x = x;
+            state.combattimento.ordine_iniziativa[idx].y = y;
+            if (rawParams.emoji) state.combattimento.ordine_iniziativa[idx].emoji = rawParams.emoji;
+
+            saveState(runId, state, (ctx as any)?.sessionKey);
+            return { status: "success", message: `${rawParams.nome} posizionato in (${x}, ${y}) sulla griglia.` };
+          } catch (err: any) {
+            return { status: "error", message: err.message };
+          }
+        }
+      }));
+
       // 17. Tool: rpg_restore_backup (alias: dnd_restore_backup)
       registerWithAlias("rpg_restore_backup", (ctx) => ({
         name: "rpg_restore_backup",
@@ -1781,4 +1826,4 @@ export default definePluginEntry({
       }));
     }
   }
-});
+} as any);

@@ -5,8 +5,9 @@
   "description": "OpenClaw plugin for D&D Game Master session state and rolling",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && node -e \"require('fs').copyFileSync('dist/index.js','index.js')\"",
-    "dev": "tsc --watch"
+    "build": "node ./node_modules/typescript/bin/tsc",
+    "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit",
+    "dev": "node ./node_modules/typescript/bin/tsc --watch"
   },
   "openclaw": {
     "extensions": ["./index.js"],

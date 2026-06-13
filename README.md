@@ -1,47 +1,42 @@
-# master-gdr-d&d
+# Master GDR D&D
 
-**D&D 5e Game Master plugin for [OpenClaw](https://openclaw.ai)**
+OpenClaw plugin for running tabletop RPG campaigns with an AI Game Master.
 
-Turn any OpenClaw agent into a fully-featured D&D 5e Game Master with persistent memory, structured combat, dice rolling, a real-time browser dashboard, and semantic RAG retrieval over your rulebooks.
+The project combines persistent campaign state, dice rolling, structured combat, a browser dashboard, text-to-speech narration, and semantic RAG retrieval over your own rule notes or legally owned manuals.
 
----
+Although the default language and examples target D&D 5e, the engine is system-agnostic and can be used with Pathfinder, Cyberpunk RED, Call of Cthulhu, Fate, Lady Blackbird, or any ruleset you describe to the agent.
 
-## What it is
+## What It Does
 
-Two OpenClaw plugins that work together:
+Master GDR D&D installs two OpenClaw plugins that work together:
 
 | Plugin | Role |
-|---|---|
-| `master-dnd-plugin` | Core GM engine — state, dice, combat, narration |
-| `wiki-context-plugin` | RAG injector — injects relevant wiki/rulebook pages before every prompt |
+| --- | --- |
+| `master-dnd-plugin` | Core Game Master engine: campaign state, character sheets, dice, combat, narration, dashboard |
+| `wiki-context-plugin` | RAG injector: retrieves relevant wiki/rulebook context before each prompt |
 
-### Three layers of memory
+The system keeps three memory layers active during play:
 
-| Layer | Storage | Persistence |
-|---|---|---|
-| **Session state** | JSON files — characters, quests, world, initiative | Across sessions |
-| **Semantic memory** | LanceDB vectors — session logs, indexed rules, wiki extracts | Permanent, semantic search |
-| **Immediate context** | Injected `<wiki-context>` block | Per-prompt |
-
----
+| Layer | Storage | Purpose |
+| --- | --- | --- |
+| Campaign state | JSON files | Characters, quests, world state, initiative, combat positions |
+| Semantic memory | LanceDB vectors | Session logs, indexed rules, wiki extracts |
+| Immediate context | Prompt injection | Current state and relevant wiki snippets for the next answer |
 
 ## Requirements
 
-- [OpenClaw](https://openclaw.ai) ≥ 2026.5.28
-- Node.js ≥ 18
-- Python ≥ 3.10 (for the wiki RAG layer)
+- OpenClaw 2026.5.28 or newer
+- Node.js 18 or newer
+- Python 3.10 or newer for the wiki RAG layer
+- Windows PowerShell for the provided one-command installer
 
-Python dependencies are installed automatically on first run via `rpg_install_dependencies`, or manually:
+Python dependencies can be installed by the plugin tool `rpg_install_dependencies`, or manually:
 
 ```bash
 pip install -r wiki/requirements.txt
 ```
 
----
-
 ## Installation
-
-### Windows (recommended)
 
 ```powershell
 git clone https://github.com/giovannifrontera/master-gdr-d-d.git
@@ -49,22 +44,18 @@ cd master-gdr-d-d
 .\install.ps1
 ```
 
-`install.ps1` runs `openclaw plugin add` for both plugins and shows where state files are stored.
+The installer registers both OpenClaw plugins:
 
-### Manual
-
-```bash
-openclaw plugin add ./master-dnd-plugin
-openclaw plugin add ./wiki/plugins/wiki-context-plugin
+```powershell
+openclaw plugin add .\master-dnd-plugin
+openclaw plugin add .\wiki\plugins\wiki-context-plugin
 ```
 
-Both plugins work out-of-the-box with zero additional configuration. State files land in `./state/`, wiki scripts are resolved relative to the plugin root.
+Campaign saves are written to `state/` by default. This directory is intentionally ignored by Git.
 
----
+## Optional Configuration
 
-## Optional configuration
-
-Add entries to `~/.openclaw/openclaw.json` to override default paths:
+All configuration keys are optional. Add overrides to your OpenClaw configuration only when you need custom paths or ports.
 
 ```json
 {
@@ -94,112 +85,73 @@ Add entries to `~/.openclaw/openclaw.json` to override default paths:
 }
 ```
 
-All config keys are optional — omitting them uses relative defaults.
+## Main Tools
 
----
-
-## Tools
-
-All tools have a `dnd_*` alias (e.g. `dnd_roll` = `rpg_roll`).
-
-### Session management
+All `rpg_*` tools also expose a `dnd_*` alias.
 
 | Tool | Description |
-|---|---|
+| --- | --- |
 | `rpg_start_run` | Start a new campaign |
 | `rpg_load_state` | Resume an existing campaign |
-| `rpg_list_runs` | List all saved campaigns |
+| `rpg_list_runs` | List saved campaigns |
 | `rpg_save_state` | Save current state manually |
-| `rpg_update_state` | Patch specific fields of the state |
-| `rpg_restore_backup` | Restore an automatic backup |
-
-### Characters
-
-| Tool | Description |
-|---|---|
+| `rpg_update_state` | Patch selected state fields |
 | `rpg_create_character` | Create or update a character sheet |
 | `rpg_get_sheet` | Read a character sheet |
-
-### Dice and combat
-
-| Tool | Description |
-|---|---|
-| `rpg_roll` | Roll dice — `1d20+5`, `3d6`, advantage, etc. |
-| `rpg_combat_start` | Start structured combat with initiative order |
+| `rpg_roll` | Roll dice such as `1d20+5`, `3d6`, advantage/disadvantage |
+| `rpg_combat_start` | Start structured combat with initiative |
 | `rpg_combat_damage` | Apply damage or healing |
-| `rpg_combat_next_turn` | Advance to the next combatant |
-| `rpg_combat_end` | End combat |
-| `rpg_set_combat_position` | Place a token on the dashboard grid |
-
-### Narrative and memory
-
-| Tool | Description |
-|---|---|
-| `rpg_log_turn` | Persist turn summary to vector memory |
-| `rpg_narrate` | Text-to-speech narration (Windows) |
-
-### Wiki RAG
-
-| Tool | Description |
-|---|---|
+| `rpg_combat_next_turn` | Advance initiative |
+| `rpg_combat_end` | End structured combat |
+| `rpg_set_combat_position` | Place a combatant on the dashboard grid |
+| `rpg_log_turn` | Persist a turn summary to vector memory |
+| `rpg_narrate` | Play narration through Windows TTS |
+| `rpg_scan_manuals` | Index PDFs from `manuali/` into the wiki |
+| `rpg_wiki_process_raw` | Promote extracted raw wiki files into the searchable index |
+| `rpg_check_wiki` | Run wiki/RAG diagnostics |
 | `rpg_install_dependencies` | Install Python dependencies |
-| `rpg_scan_manuals` | Index PDF rulebooks into the wiki |
-| `rpg_check_wiki` | Full diagnostic of the wiki RAG system |
-| `rpg_wiki_process_raw` | Promote raw/ files to the searchable index |
-
----
+| `rpg_restore_backup` | Restore an automatic campaign backup |
 
 ## Dashboard
 
-Open `http://localhost:7332/` after starting a session:
+After starting a campaign, open:
 
-- **Party** — character sheets with avatar, HP, stats, inventory
-- **Map** — initiative order + 8×6 combat grid with token positions
-- **Chat** — direct interface to the GM agent
-
----
-
-## Architecture
-
-```
-progetto-master-gdr-d&d/
-├── master-dnd-plugin/        ← OpenClaw plugin (Node.js)
-│   ├── index.js              ← plugin entry point (loaded by OpenClaw)
-│   ├── openclaw.plugin.json  ← plugin manifest
-│   ├── src/                  ← TypeScript source
-│   ├── wiki-backend/         ← Python helpers (TTS, combat log, etc.)
-│   └── dashboard.html        ← browser dashboard
-│
-├── wiki/                     ← Wiki RAG subsystem
-│   ├── plugins/wiki-context-plugin/  ← OpenClaw plugin (Node.js)
-│   │   ├── index.js          ← plugin entry point
-│   │   ├── src/              ← TypeScript source
-│   │   └── openclaw.plugin.json
-│   ├── scripts/              ← Python scripts (wiki_context.py, wiki.py, …)
-│   ├── requirements.txt      ← Python dependencies
-│   └── wiki.config.json      ← wiki indexer configuration
-│
-├── state/                    ← (gitignored) game saves and session state
-├── install.ps1               ← one-command installer (Windows)
-└── LICENSE                   ← AGPL-3.0
+```text
+http://localhost:7332/
 ```
 
-The `wiki-context-plugin` hooks into `before_prompt_build`: it queries the running wiki server (or falls back to a subprocess) and prepends a `<wiki-context>` block with the most semantically relevant rules/notes for the current user prompt.
+The dashboard shows:
 
----
+- Party sheets with HP, stats, inventory and avatars
+- Initiative order and an 8x6 combat grid
+- Browser chat interface for the Game Master agent
 
-## System agnostic
+## Repository Layout
 
-The plugin is system-agnostic. Works with any TTRPG: D&D 5e, Pathfinder 2e, Cyberpunk RED, Call of Cthulhu, Fate, or any system you describe to the agent.
+```text
+master-gdr-d-d/
+|-- master-dnd-plugin/              OpenClaw plugin for RPG state and tools
+|   |-- src/index.ts                TypeScript source
+|   |-- index.js                    Built plugin entry loaded by OpenClaw
+|   |-- openclaw.plugin.json        Plugin manifest
+|   |-- dashboard.html              Browser dashboard
+|   `-- wiki-backend/               Bundled Python helper scripts
+|-- wiki/                           Wiki/RAG subsystem
+|   |-- scripts/                    Python CLI, server, embedding and PDF tools
+|   |-- plugins/wiki-context-plugin OpenClaw context-injection plugin
+|   |-- requirements.txt            Python dependencies
+|   `-- wiki.config.json            Wiki configuration
+|-- install.ps1                     Windows installer
+|-- LICENSE                         AGPL-3.0
+`-- state/                          Local campaign saves, gitignored
+```
 
----
+## Legal Note
+
+Do not commit copyrighted rulebooks or campaign notes that you cannot redistribute. The repository ignores `manuali/`, `wiki/pdf-inbox/`, generated wiki memory, local state and audio output for this reason.
 
 ## License
 
-GNU Affero General Public License v3.0 — see [LICENSE](LICENSE).
+GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
 
 Copyright (C) 2026 Giovanni Frontera
-
----
-
-*Plugin per [OpenClaw](https://openclaw.ai) — il gateway AI modulare e open-source.*
