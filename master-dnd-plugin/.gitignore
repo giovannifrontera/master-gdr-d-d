@@ -1,12 +1,6 @@
 # Dipendenze
 node_modules/
 
-# Build compilato (generato da: npm run build)
-dist/
-
-# Backup TypeScript automatici
-src/*.bak
-
 # Debug log della wiki
 wiki-backend/.wiki-plugin-debug.log
 

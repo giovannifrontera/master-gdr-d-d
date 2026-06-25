@@ -1,6 +1,6 @@
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
-import { existsSync, writeFileSync, readFileSync, mkdirSync, appendFileSync, readdirSync, rmSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, writeFileSync, readFileSync, mkdirSync, appendFileSync, readdirSync, rmSync, renameSync } from "node:fs";
+import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
@@ -273,8 +273,10 @@ export default definePluginEntry({
             catch (err) {
                 console.error(`[master-dnd-plugin] Backup folder initialization error:`, err);
             }
-            // Write the new state file
-            writeFileSync(file, JSON.stringify(state, null, 2), "utf-8");
+            // Write the new state file atomically (tmp + rename) to avoid corrupting the save on a mid-write crash
+            const tmpFile = `${file}.tmp`;
+            writeFileSync(tmpFile, JSON.stringify(state, null, 2), "utf-8");
+            renameSync(tmpFile, file);
             setActiveRunId(runId, sessionKey);
         };
         // Python Wiki Paths mapping
@@ -1693,7 +1695,13 @@ refresh();setInterval(refresh,2500);
                         }
                         let fileToRestore = "";
                         if (rawParams.backup_file) {
-                            fileToRestore = join(backupDir, rawParams.backup_file);
+                            // Sanitize against path traversal: resolve and verify it stays inside backupDir
+                            const candidate = resolve(backupDir, rawParams.backup_file);
+                            const resolvedBackupDir = resolve(backupDir);
+                            if (!candidate.startsWith(resolvedBackupDir + "\\") && !candidate.startsWith(resolvedBackupDir + "/")) {
+                                return { status: "error", message: "Nome file di backup non valido (path traversal non consentito)." };
+                            }
+                            fileToRestore = candidate;
                         }
                         else if (rawParams.turno !== undefined && rawParams.turno !== null) {
                             const padTurn = String(rawParams.turno).padStart(4, "0");

@@ -3,12 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "description": "OpenClaw plugin for D&D Game Master session state and rolling",
-  "main": "dist/index.js",
-  "scripts": {
-    "build": "node ./node_modules/typescript/bin/tsc",
-    "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit",
-    "dev": "node ./node_modules/typescript/bin/tsc --watch"
-  },
+  "main": "index.js",
   "openclaw": {
     "extensions": ["./index.js"],
     "pluginManifest": "openclaw.plugin.json",
@@ -16,8 +11,6 @@
     "buildVersion": "1.0.0"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
-    "openclaw": "*",
-    "typescript": "^5.0.0"
+    "openclaw": "*"
   }
 }
