@@ -27,35 +27,15 @@ Same as CC-1.
 
 Same as CC-2.
 
-### Step OC-3: Build the plugin
+### Step OC-3: OpenClaw integration
 
-```bash
-cd plugins/wiki-context-plugin
-npm install
-npm run build
-```
+This repository does not ship the standalone wiki-context OpenClaw plugin. For the D&D tool, install `master-dnd-plugin`; it embeds this wiki backend directly.
 
-### Step OC-4: Configure the plugin in OpenClaw
-
-```bash
-py scripts/setup_openclaw.py --workspace <WORKSPACE>
-```
-
-If auto-detection fails:
-```bash
-py scripts/setup_openclaw.py --workspace <WORKSPACE> --config <OPENCLAW_CONFIG_PATH>
-```
-
-Verify that `pythonExecutable` in the OpenClaw config is the absolute path:
-```bash
-py -c "import sys; print(sys.executable)"
-```
-
-### Step OC-5: Initialize LanceDB
+### Step OC-4: Initialize LanceDB
 
 Same as CC-4.
 
-### Step OC-6: Update your user AGENTS.md
+### Step OC-5: Update your user AGENTS.md
 
 Open `AGENTS.md` of your project (or create `~/.openclaw/AGENTS.md`) and add:
 
@@ -64,6 +44,6 @@ Open `AGENTS.md` of your project (or create `~/.openclaw/AGENTS.md`) and add:
 Active wiki workspace: <WORKSPACE>
 ```
 
-### Step OC-7: Restart OpenClaw
+### Step OC-6: Restart OpenClaw
 
 **OpenClaw setup complete.**

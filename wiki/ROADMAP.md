@@ -16,7 +16,7 @@ Future development ideas, not yet scheduled. Ordered by estimated priority.
 
 **Status:** Released in v1.1.0 (2026-05-21)
 
-`wiki_context.py` runs a vector search before every user prompt and injects the relevant pages as a `<wiki-context>` block. Wired as a pre-hook in OpenClaw via `plugins/wiki-context-plugin/`. See `AGENTS_PATCH.md`.
+`wiki_context.py` runs a vector search and returns relevant pages as a `<wiki-context>` block. In this repository it is consumed by the embedded `master-dnd-plugin/wiki-backend`; the standalone OpenClaw context plugin lives in its own repository.
 
 ---
 

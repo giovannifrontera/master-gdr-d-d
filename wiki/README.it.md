@@ -327,34 +327,7 @@ Per l'integrazione nativa con MCP server (raccomandata), vedi il repo dedicato: 
 
 [OpenClaw](https://github.com/openclaw/openclaw) connette Telegram, Discord e web ad agenti AI con accesso bash/file/browser sul filesystem locale.
 
-**Setup guidato da agente (consigliato):** fornisci il link al repo in chat e chiedi all'agente OpenClaw di occuparsi dell'installazione. Legge `AGENTS.md` ed esegue:
-```bash
-py scripts/setup_openclaw.py --workspace /path/assoluto/al/workspace
-```
-Lo script rileva automaticamente il file di config OpenClaw e inietta l'entry del plugin. Passa `--config /path/al/config.json` se il rilevamento automatico fallisce.
-
-**Setup manuale:**
-```bash
-cd plugins/wiki-context-plugin
-npm install && npm run build
-```
-
-Aggiungi al config OpenClaw:
-```json
-{
-  "plugins": [
-    {
-      "id": "wiki-context-plugin",
-      "path": "/path/assoluto/ai-wiki-system/plugins/wiki-context-plugin",
-      "config": {
-        "workspace": "/path/assoluto/al/workspace",
-        "wikiContextScript": "/path/assoluto/scripts/wiki_context.py",
-        "pythonExecutable": "python",
-        "k": 3
-      }
-    }
-  ]
-}
+Questa repository D&D non include piu' il plugin OpenClaw wiki-context standalone. Installa `master-dnd-plugin` dalla root della repository: usa direttamente questo backend wiki embedded. Per il plugin standalone usa la repository wiki-context separata.
 
 ### Cosa fa l'agente automaticamente
 

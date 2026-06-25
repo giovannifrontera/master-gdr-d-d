@@ -16,7 +16,7 @@ Idee di sviluppo future, non ancora pianificate. Ordinate per priorità stimata.
 
 **Stato:** Rilasciato in v1.1.0 (2026-05-21)
 
-`wiki_context.py` esegue una ricerca vettoriale prima di ogni prompt utente e inietta le pagine rilevanti come blocco `<wiki-context>`. Collegato come pre-hook in OpenClaw via `plugins/wiki-context-plugin/`. Vedi `AGENTS_PATCH.md`.
+`wiki_context.py` esegue una ricerca vettoriale e restituisce le pagine rilevanti come blocco `<wiki-context>`. In questa repository viene usato dal backend embedded di `master-dnd-plugin/wiki-backend`; il plugin OpenClaw standalone vive in una repository separata.
 
 ---
 

@@ -381,34 +381,7 @@ For the native Claude Code MCP integration (recommended), see the dedicated repo
 
 [OpenClaw](https://github.com/openclaw/openclaw) connects Telegram, Discord, and web to AI agents with bash/file/browser access on your filesystem.
 
-**Agent-driven setup (recommended):** provide the repo link in chat and ask the OpenClaw agent to install. It reads `AGENTS.md` and runs:
-```bash
-py scripts/setup_openclaw.py --workspace /absolute/path/to/workspace
-```
-The script auto-detects the OpenClaw config file and injects the plugin entry. Pass `--config /path/to/config.json` if auto-detection fails.
-
-**Manual setup:**
-```bash
-cd plugins/wiki-context-plugin
-npm install && npm run build
-```
-
-Add to OpenClaw config:
-```json
-{
-  "plugins": [
-    {
-      "id": "wiki-context-plugin",
-      "path": "/absolute/path/to/ai-wiki-system/plugins/wiki-context-plugin",
-      "config": {
-        "workspace": "/absolute/path/to/workspace",
-        "wikiContextScript": "/absolute/path/to/scripts/wiki_context.py",
-        "pythonExecutable": "python",
-        "k": 3
-      }
-    }
-  ]
-}
+This D&D repository no longer ships the standalone OpenClaw wiki context plugin. Install `master-dnd-plugin` from the repository root; it embeds this wiki backend directly. Use the separate wiki-context repository if you need the standalone plugin.
 
 ### What the agent does automatically
 

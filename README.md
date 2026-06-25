@@ -73,7 +73,7 @@ flowchart LR
 | --- | --- | --- |
 | `master-dnd-plugin` | Core Game Master engine plus bundled wiki/RAG injector | `index.js`, `dashboard.html`, `wiki-backend/` |
 
-Install only `master-dnd-plugin` for OpenClaw. `wiki/plugins/wiki-context-plugin/` is kept for standalone wiki use; installing both causes duplicate prompt injection.
+Install only `master-dnd-plugin` for OpenClaw. The wiki context plugin lives in its own repository; this repo ships only the embedded wiki backend used by the D&D master.
 
 ## Quick Start
 
@@ -226,7 +226,6 @@ master-gdr-d-d/
 |   `-- wiki-backend/               Bundled Python helper scripts
 |-- wiki/                           Wiki/RAG subsystem
 |   |-- scripts/                    Python CLI, server, embedding and PDF tools
-|   |-- plugins/wiki-context-plugin Legacy standalone context plugin
 |   |-- requirements.txt            Python dependencies
 |   `-- wiki.config.json            Wiki configuration
 |-- install.ps1                     Windows installer
