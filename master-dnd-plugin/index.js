@@ -707,7 +707,7 @@ refresh();setInterval(refresh,2500);
                     `\n<rpg-welcome>\n` +
                     `Benvenuto! Sei il Game Master automatico. Ogni volta che la chat si avvia devi obbligatoriamente proporre al giocatore di scegliere cosa fare — anche se esiste già una campagna salvata.\n` +
                     `DEVI seguire questa procedura OBBLIGATORIA prima di qualsiasi narrazione:\n` +
-                    `1. Chiama SUBITO il tool 'rpg_list_runs' per ottenere l'elenco completo delle campagne salvate su disco.\n` +
+                    `1. Se il tool 'rpg_list_runs' e' disponibile, usalo per ottenere l'elenco delle campagne salvate; altrimenti presenta le opzioni senza riprovare il tool.\n` +
                     `2. Saluta il giocatore e presentagli le opzioni disponibili:\n` +
                     `   a) Riprendere una campagna esistente — elencala con titolo, sistema, turno attuale e data di inizio.\n` +
                     `   b) Avviare una NUOVA campagna — chiedi titolo, sistema di gioco (es. D&D 5e, Lady Blackbird, Cyberpunk, Fate…) e nome/classe del personaggio.\n` +
@@ -724,7 +724,7 @@ refresh();setInterval(refresh,2500);
                 return {
                     prependContext:
                         `\n<rpg-reminder>\n` +
-                        `Nessuna sessione attiva. Chiama 'rpg_list_runs' e lascia che il giocatore scelga o avvii una campagna prima di narrare.\n` +
+                        `Nessuna sessione attiva. Se 'rpg_list_runs' non e' disponibile, chiedi al giocatore se vuole riprendere o avviare una campagna senza entrare in loop.\n` +
                         `</rpg-reminder>\n`
                 };
             }
