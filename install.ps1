@@ -9,28 +9,47 @@ Write-Host ""
 Write-Host "=== Installazione plugin Master D&D ===" -ForegroundColor Cyan
 Write-Host ""
 
-if (-not (Get-Command "openclaw" -ErrorAction SilentlyContinue)) {
-    Write-Error "Errore: 'openclaw' non trovato nel PATH. Installa OpenClaw prima di procedere."
-    exit 1
+# Nota: 'openclaw plugin add' NON registra correttamente questi plugin (non popola
+# plugins.load.paths). La registrazione va fatta a mano in ~/.openclaw/openclaw.json.
+# Questo script stampa la configurazione pronta da incollare, con i percorsi assoluti corretti.
+
+$masterFwd = $masterPlugin -replace '\\', '/'
+$wikiFwd   = $wikiPlugin -replace '\\', '/'
+$stateFwd  = (Join-Path $projectRoot "state") -replace '\\', '/'
+$wikiScript = (Join-Path $projectRoot "wiki\scripts\wiki_context.py") -replace '\\', '/'
+
+Write-Host "Registrazione MANUALE richiesta." -ForegroundColor Yellow
+Write-Host "Apri ~/.openclaw/openclaw.json e fondi le seguenti voci nella sezione \"plugins\":" -ForegroundColor White
+Write-Host ""
+
+$snippet = @"
+{
+  "plugins": {
+    "load": {
+      "paths": [
+        "$masterFwd",
+        "$wikiFwd"
+      ]
+    },
+    "allow": ["master-dnd-plugin", "wiki-context-plugin"],
+    "entries": {
+      "master-dnd-plugin": {
+        "enabled": true,
+        "config": { "stateDirectory": "$stateFwd", "pythonExecutable": "python" }
+      },
+      "wiki-context-plugin": {
+        "enabled": true,
+        "config": { "workspace": "$wikiFwd", "wikiContextScript": "$wikiScript", "pythonExecutable": "py" }
+      }
+    }
+  }
 }
+"@
 
-Write-Host "Installazione master-dnd-plugin..." -ForegroundColor Yellow
-openclaw plugin add $masterPlugin
-if (-not $?) { Write-Error "Installazione master-dnd-plugin fallita."; exit 1 }
-Write-Host "  master-dnd-plugin installato." -ForegroundColor Green
-
-Write-Host "Installazione wiki-context-plugin..." -ForegroundColor Yellow
-openclaw plugin add $wikiPlugin
-if (-not $?) { Write-Error "Installazione wiki-context-plugin fallita."; exit 1 }
-Write-Host "  wiki-context-plugin installato." -ForegroundColor Green
-
+Write-Host $snippet -ForegroundColor Gray
 Write-Host ""
-Write-Host "=== Installazione completata ===" -ForegroundColor Cyan
+Write-Host "Se hai gia' altri plugin, AGGIUNGI le voci agli array/oggetti esistenti (non sovrascrivere)." -ForegroundColor DarkYellow
 Write-Host ""
-Write-Host "File di stato salvati in: $projectRoot\state" -ForegroundColor White
-Write-Host "Script wiki in:           $projectRoot\wiki\scripts\wiki_context.py" -ForegroundColor White
-Write-Host ""
-Write-Host "Per usare percorsi personalizzati, aggiungi in ~/.openclaw/openclaw.json:" -ForegroundColor Gray
-Write-Host '  "master-dnd-plugin":   { "config": { "stateDirectory": "C:/percorso/custom/state" } }' -ForegroundColor Gray
-Write-Host '  "wiki-context-plugin": { "config": { "workspace": "C:/percorso/wiki", "wikiContextScript": "C:/percorso/wiki/scripts/wiki_context.py" } }' -ForegroundColor Gray
+Write-Host "Poi riavvia il gateway:" -ForegroundColor White
+Write-Host "  openclaw gateway restart" -ForegroundColor Cyan
 Write-Host ""

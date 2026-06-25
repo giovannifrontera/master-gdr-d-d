@@ -16,29 +16,45 @@ Gestione stato persistente, dadi, combattimento strutturato, memoria vettoriale 
 git clone https://github.com/giovannifrontera/master-gdr-d-d.git
 ```
 
-### 2. Installa il plugin in OpenClaw
+### 2. Registra il plugin in OpenClaw (manuale)
 
-```bash
-openclaw plugin add ./master-gdr-d-d/master-dnd-plugin
-```
+> **Nota:** `openclaw plugin add` **non** registra correttamente questo plugin (non popola `plugins.load.paths`). Va configurato a mano nel file `~/.openclaw/openclaw.json`.
 
-### 3. Configura OpenClaw
+Apri `~/.openclaw/openclaw.json` e modifica la sezione `plugins`. Servono **tre** cose perché OpenClaw lo carichi:
 
-Apri `~/.openclaw/openclaw.json` e aggiungi nella sezione `plugins.entries`:
+1. **`load.paths`** — il percorso assoluto della cartella del plugin (è qui che OpenClaw scopre il plugin)
+2. **`allow`** — l'id del plugin nella whitelist
+3. **`entries`** — l'attivazione e la configurazione
 
 ```json
-"master-dnd-plugin": {
-  "config": {
-    "stateDirectory": "/percorso/a/tua/scelta/state",
-    "pythonExecutable": "python"
-  },
-  "enabled": true
+{
+  "plugins": {
+    "load": {
+      "paths": [
+        "C:/Users/<utente>/master-gdr-d-d/master-dnd-plugin"
+      ]
+    },
+    "allow": [
+      "master-dnd-plugin"
+    ],
+    "entries": {
+      "master-dnd-plugin": {
+        "enabled": true,
+        "config": {
+          "stateDirectory": "C:/Users/<utente>/master-gdr-d-d/state",
+          "pythonExecutable": "python"
+        }
+      }
+    }
+  }
 }
 ```
 
-> **Windows**: usa slash forward (`C:/Users/nome/state`) o doppio backslash (`C:\\Users\\nome\\state`).
+> Se hai già altri plugin, **aggiungi** le voci agli array/oggetti esistenti, non sovrascrivere `load.paths`, `allow` o `entries`.
+>
+> **Windows**: usa slash forward (`C:/Users/nome/...`) o doppio backslash (`C:\\Users\\nome\\...`).
 
-### 4. Riavvia il gateway
+### 3. Riavvia il gateway
 
 ```bash
 openclaw gateway restart
