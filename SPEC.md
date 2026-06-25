@@ -124,7 +124,8 @@ Config:
 plugins:
   master-dnd:
     enabled: true
-    rules_wiki_path: "wiki/dnd/"
+    dashboardPort: 47332
+    wikiDataDir: "state/wiki-data"
     run_memory_path: "run-memory/"
     max_players: 6
     default_level: 1

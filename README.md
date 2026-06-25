@@ -152,13 +152,7 @@ Minimal example:
 
 Then restart the gateway: `openclaw gateway restart`.
 
-Python dependencies can also be installed manually:
-
-```bash
-pip install -r wiki/requirements.txt
-```
-
-For the self-contained plugin backend, the equivalent path is:
+Python dependencies can also be installed manually from the self-contained plugin backend:
 
 ```powershell
 python -m pip install -r master-dnd-plugin\wiki-backend\requirements.txt
@@ -224,10 +218,6 @@ master-gdr-d-d/
 |   |-- openclaw.plugin.json        Plugin manifest
 |   |-- dashboard.html              Browser dashboard
 |   `-- wiki-backend/               Bundled Python helper scripts
-|-- wiki/                           Wiki/RAG subsystem
-|   |-- scripts/                    Python CLI, server, embedding and PDF tools
-|   |-- requirements.txt            Python dependencies
-|   `-- wiki.config.json            Wiki configuration
 |-- install.ps1                     Windows installer
 |-- LICENSE                         AGPL-3.0
 `-- state/                          Local campaign saves, gitignored
@@ -235,7 +225,7 @@ master-gdr-d-d/
 
 ## Legal Note
 
-Do not commit copyrighted rulebooks or campaign notes that you cannot redistribute. The repository ignores `manuali/`, `wiki/pdf-inbox/`, generated wiki memory, local state and audio output for this reason.
+Do not commit copyrighted rulebooks or campaign notes that you cannot redistribute. The repository ignores `manuali/`, generated wiki memory, local state and audio output for this reason.
 
 ## License
 
