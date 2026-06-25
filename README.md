@@ -92,10 +92,11 @@ Both plugins are installed into OpenClaw and work together during every conversa
 
 ### What Is Automatic
 
-`install.ps1` assumes OpenClaw is already installed and available in `PATH`. Once the plugins are registered (see [Install](#install) — registration is **manual**, `openclaw plugin add` does not work for these plugins), the project bootstraps itself:
+`install.ps1` assumes OpenClaw is already installed and available in `PATH`. From there the project bootstraps itself:
 
 | Step | What happens |
 | --- | --- |
+| `install.ps1` | Registers `master-dnd-plugin` in `openclaw.json` (`load.paths` + `allow` + `entries`) via `setup_openclaw.py` — `openclaw plugin add` does not work for this plugin |
 | First OpenClaw startup | Creates local state/wiki folders and tries to install missing Python packages |
 
 The plugin bundles the wiki backend under `master-dnd-plugin/wiki-backend/`, including scripts, config template, skills and Python requirements. No separate wiki repository is required.
@@ -125,9 +126,15 @@ git clone https://github.com/giovannifrontera/master-gdr-d-d.git
 cd master-gdr-d-d
 ```
 
-> **`openclaw plugin add` does not work natively for these plugins** — it fails to populate `plugins.load.paths`, so OpenClaw never loads them. Register the plugins manually in `~/.openclaw/openclaw.json` instead.
+> **`openclaw plugin add` does not work natively for these plugins** — it fails to populate `plugins.load.paths`, so OpenClaw never loads them.
 
-For each plugin, OpenClaw needs three things under the `plugins` section: the plugin directory in **`load.paths`**, its id in **`allow`**, and an **`entries`** record with `enabled` + `config`. Full config (with all options) is documented in [`master-dnd-plugin/README.md`](master-dnd-plugin/README.md#2-registra-il-plugin-in-openclaw-manuale).
+**Easiest:** run `.\install.ps1` (or `py master-dnd-plugin\wiki-backend\scripts\setup_openclaw.py`). It writes `load.paths` + `allow` + `entries` into `openclaw.json` idempotently and atomically, preserving any other plugins.
+
+```powershell
+.\install.ps1
+```
+
+**Manual:** for each plugin, OpenClaw needs three things under the `plugins` section: the plugin directory in **`load.paths`**, its id in **`allow`**, and an **`entries`** record with `enabled` + `config`. Full config (with all options) is documented in [`master-dnd-plugin/README.md`](master-dnd-plugin/README.md#2-registra-il-plugin-in-openclaw).
 
 Minimal example registering both plugins:
 

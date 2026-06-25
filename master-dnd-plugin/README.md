@@ -16,9 +16,19 @@ Gestione stato persistente, dadi, combattimento strutturato, memoria vettoriale 
 git clone https://github.com/giovannifrontera/master-gdr-d-d.git
 ```
 
-### 2. Registra il plugin in OpenClaw (manuale)
+### 2. Registra il plugin in OpenClaw
 
-> **Nota:** `openclaw plugin add` **non** registra correttamente questo plugin (non popola `plugins.load.paths`). Va configurato a mano nel file `~/.openclaw/openclaw.json`.
+> **Nota:** `openclaw plugin add` **non** registra correttamente questo plugin (non popola `plugins.load.paths`). Usa lo script qui sotto, oppure configura a mano `~/.openclaw/openclaw.json`.
+
+#### Opzione A — automatica (consigliata)
+
+```bash
+py wiki-backend/scripts/setup_openclaw.py
+```
+
+Lo script trova `openclaw.json`, vi scrive `load.paths` + `allow` + `entries` (in modo idempotente e atomico) e preserva gli altri plugin. Opzioni utili: `--dry-run` (mostra senza scrivere), `--config <path>`, `--state-dir <path>`, `--python <eseguibile>`.
+
+#### Opzione B — manuale
 
 Apri `~/.openclaw/openclaw.json` e modifica la sezione `plugins`. Servono **tre** cose perché OpenClaw lo carichi:
 
