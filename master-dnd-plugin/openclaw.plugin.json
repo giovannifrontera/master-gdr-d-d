@@ -67,6 +67,11 @@
         "default": 600,
         "description": "Lunghezza massima di caratteri per ciascun frammento iniettato."
       },
+      "minRelevance": {
+        "type": "number",
+        "default": 0.3,
+        "description": "Soglia minima di rilevanza (0-1) per iniettare un frammento wiki. Scarta i risultati con score sotto soglia (es. negativi)."
+      },
       "serverPort": {
         "type": "integer",
         "default": 7331,

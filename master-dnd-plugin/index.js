@@ -111,6 +111,32 @@ function normalizeGameState(state) {
     state.mondo.npcs_incontrati = Array.isArray(state.mondo.npcs_incontrati) ? state.mondo.npcs_incontrati : [];
     return state;
 }
+function summarizeActiveState(state, runId) {
+    const title = state.titolo || state.campagna || runId;
+    const place = state.luogo || state.location || state.mondo?.luogo_corrente || state.mondo?.luogo || "non specificato";
+    const scene = state.scena || state.scene || state.mondo?.scena_corrente || "";
+    const characters = Object.values(state.personaggi || {}).slice(0, 3).map((c) => {
+        const hp = c.hp ? `HP ${c.hp.correnti}/${c.hp.max}` : "";
+        const pool = c.pool ? `Pool ${c.pool.correnti ?? c.pool.current ?? c.pool}/${c.pool.max ?? c.pool.totale ?? "?"}` : "";
+        const conditions = c.condizioni || c.conditions || [];
+        const condText = Array.isArray(conditions) ? conditions.join(", ") : String(conditions || "");
+        const keys = c.chiavi || c.keys || [];
+        const keyText = Array.isArray(keys) ? keys.join(", ") : "";
+        return `${c.nome || "PG"}: ${[pool, hp].filter(Boolean).join(" | ") || "scheda attiva"} | Condizioni: ${condText || "nessuna"}${keyText ? ` | Chiavi: ${keyText}` : ""}`;
+    });
+    const recent = state.scene_recenti || state.scene_recenti_breve || state.ultimi_eventi || state.log_recenti || [];
+    const recentText = Array.isArray(recent) ? recent.slice(-3).join("; ") : String(recent || "");
+    return [
+        `Campagna: ${title} | Turno: ${state.turno || 0} | Sistema: ${state.sistema || state.system || "dnd5e"}`,
+        `Luogo: ${place}${scene ? ` | Scena: ${scene}` : ""}`,
+        ...characters,
+        `Scene recenti: ${recentText || state.ultimo_turno || "nessuna sintesi recente"}`
+    ].slice(0, 6).join("\n");
+}
+function wantsWikiContext(text) {
+    const q = String(text || "").toLowerCase();
+    return /\b(regol[aei]|manuale|incantesim|danno|tabell|lore|storia|passato|npc|luogo|mappa|ricord|wiki|cerca|chi era|dove|combattimento|iniziativa|arma|tagli[ae]|taglie|stiva|seduzione|dialogo)\b/.test(q);
+}
 // Function to initialize wiki workspace under user specified data folder dynamically
 function initWikiWorkspace(wikiDataDir, defaultCfgPath) {
     if (!existsSync(wikiDataDir)) {
@@ -156,7 +182,7 @@ function initWikiWorkspace(wikiDataDir, defaultCfgPath) {
     }
     const srcSkills = join(dirname(defaultCfgPath), "skills");
     if (existsSync(srcSkills)) {
-        for (const file of ["wiki-core.md", "wiki-setup.md"]) {
+        for (const file of ["wiki-core.md", "wiki-setup.md", "rpg-gm.md"]) {
             const srcFile = join(srcSkills, file);
             const destFile = join(destSkills, file);
             if (existsSync(srcFile) && !existsSync(destFile)) {
@@ -210,6 +236,7 @@ export default definePluginEntry({
         const python = cfg.pythonExecutable ?? "python";
         const k = String(cfg.k ?? 3);
         const maxChars = String(cfg.maxChars ?? 600);
+        const minRelevance = Number(cfg.minRelevance ?? 0.3);
         const serverPort = cfg.serverPort ?? 7331;
         const dashboardPort = cfg.dashboardPort ?? 47332;
         const debug = cfg.debug === true;
@@ -327,6 +354,9 @@ export default definePluginEntry({
         const defaultCfgPath = join(wikiBackendDir, "wiki.config.json");
         const sessionsBriefed = new Set();
         const sessionsWelcomed = new Set();
+        const sessionsRulesShown = new Set(); // regole procedurali one-shot per sessione
+        const lastInjectedState = new Map(); // sessionKey -> ultimo JSON di stato iniettato (per delta)
+        const sessionPromptCounts = new Map();
         // INITIALIZATION OF WIKI ENVIRONMENT
         if (wikiEnabled) {
             try {
@@ -604,11 +634,15 @@ async function refresh(){
 refresh();setInterval(refresh,2500);
 <\/script>
 </body></html>`;
-        // Read gateway auth token + port from ~/.openclaw/openclaw.json
+        // Read gateway auth token + port from OPENCLAW_HOME first, then ~/.openclaw.
         let gatewayAuthToken = "";
         let gatewayListenPort = 18789;
         try {
-            const ocCfg = JSON.parse(readFileSync(join(homedir(), ".openclaw", "openclaw.json"), "utf-8"));
+            const openclawHome = process.env.OPENCLAW_HOME;
+            const cfgPath = openclawHome
+                ? (existsSync(join(openclawHome, "openclaw.json")) ? join(openclawHome, "openclaw.json") : join(openclawHome, ".openclaw", "openclaw.json"))
+                : join(homedir(), ".openclaw", "openclaw.json");
+            const ocCfg = JSON.parse(readFileSync(cfgPath, "utf-8"));
             gatewayAuthToken = ocCfg.gateway?.auth?.token || "";
             gatewayListenPort = ocCfg.gateway?.port || 18789;
         }
@@ -747,6 +781,7 @@ refresh();setInterval(refresh,2500);
                     `\n<rpg-welcome>\n` +
                     `Benvenuto! Sei il Game Master automatico. Ogni volta che la chat si avvia devi obbligatoriamente proporre al giocatore di scegliere cosa fare — anche se esiste già una campagna salvata.\n` +
                     `DEVI seguire questa procedura OBBLIGATORIA prima di qualsiasi narrazione:\n` +
+                    `0. Leggi 'skills/wiki-core.md' e 'skills/rpg-gm.md' se disponibili: wiki-core spiega la memoria, rpg-gm spiega come condurre la sessione e usare i tool.\n` +
                     `1. Se il tool 'rpg_list_runs' e' disponibile, usalo per ottenere l'elenco delle campagne salvate; altrimenti presenta le opzioni senza riprovare il tool.\n` +
                     `2. Saluta il giocatore e presentagli le opzioni disponibili:\n` +
                     `   a) Riprendere una campagna esistente — elencala con titolo, sistema, turno attuale e data di inizio.\n` +
@@ -754,6 +789,12 @@ refresh();setInterval(refresh,2500);
                     `3. In base alla scelta del giocatore:\n` +
                     `   - Riprendere → chiama 'rpg_load_state' con il run_id scelto.\n` +
                     `   - Nuova campagna → raccogli i dati necessari, poi chiama 'rpg_start_run'.\n` +
+                    `4. WORLDBUILDING OBBLIGATORIO (solo nuova campagna, PRIMA di iniziare a narrare): costruisci e SCRIVI per intero — nei file wiki sotto wiki-works/avventure/<run_id>/ e nel JSON di stato — l'impianto del mondo:\n` +
+                    `   - LORE NASCOSTA: trama di fondo, segreti, antagonista e sue motivazioni, colpi di scena pianificati. Questa lore la conosci SOLO tu (Master): non rivelarla al giocatore, usala per guidare gli eventi con coerenza. Salvala in wiki-works/avventure/<run_id>/synthesis/lore-nascosta.md.tmp.\n` +
+                    `   - MAPPE E LUOGHI: definisci le ambientazioni principali e le loro relazioni (geografia, distanze, punti d'interesse) sotto wiki-works/avventure/<run_id>/concepts/.\n` +
+                    `   - NPC: crea gli NPC chiave con nome, ruolo, obiettivi e ASPETTO FISICO descritto (volto, corporatura, abbigliamento, segni distintivi) sotto entities/, e registrali in 'mondo.npcs_incontrati'.\n` +
+                    `   - PROTAGONISTA E PARTY: ogni personaggio giocante e compagno deve avere una descrizione dell'ASPETTO FISICO oltre a statistiche e personalità, salvata nella sua scheda.\n` +
+                    `   Mantieni questi elementi COERENTI per tutta la campagna: non contraddire aspetto, nomi, luoghi o fatti già stabiliti.\n` +
                     `REGOLA ASSOLUTA: NON iniziare a narrare alcuna avventura finché non hai chiamato con successo 'rpg_load_state' o 'rpg_start_run' e ricevuto una risposta di successo.\n` +
                     `</rpg-welcome>\n`;
                 return { prependContext: welcomeInjection };
@@ -777,35 +818,47 @@ refresh();setInterval(refresh,2500);
                 ev.text ??
                 "";
             const parts = [];
-            // 1. INJECT STATE JSON (UNIVERSAL)
+            const promptCount = (sessionPromptCounts.get(currentSessionKey) || 0) + 1;
+            sessionPromptCounts.set(currentSessionKey, promptCount);
+            // 1. INJECT LIGHT ACTIVE STATE (UNIVERSAL)
             let activeSystem = "dnd5e";
             let characterWizardInjection = "";
             let combatInjection = "";
             try {
                 const state = loadState(activeRunId);
                 activeSystem = state.sistema || state.system || "dnd5e";
-                const formattedState = JSON.stringify(state, null, 2);
-                const stateInjection = `\n<rpg-state>\n` +
-                    `Informazioni sullo stato della partita GDR (Sistema: ${activeSystem}, Run ID: ${activeRunId}, Turno: ${state.turno || 0}):\n` +
-                    `${formattedState}\n` +
-                    `\n` +
-                    `MANDATORY RULES FOR WIKI INGEST IN THIS CAMPAIGN:\n` +
-                    `- Qualsiasi nuova pagina wiki specifica di questa campagna (NPC, lore, riassunti, quest) deve essere scritta sotto il percorso isolato:\n` +
-                    `  wiki-works/avventure/${activeRunId}/\n` +
-                    `  Esempi:\n` +
-                    `  - Entità/NPC: wiki-works/avventure/${activeRunId}/entities/nome-npc.md.tmp\n` +
-                    `  - Concetti/Luoghi: wiki-works/avventure/${activeRunId}/concepts/nome-luogo.md.tmp\n` +
-                    `  - Riassunti di sessione: wiki-works/avventure/${activeRunId}/synthesis/sessione-001.md.tmp\n` +
-                    `- NON scrivere mai pagine specifiche della campagna sotto wiki-works/avventure/ o direttamente sotto wiki/.\n` +
-                    `- Le regole condivise di questo specifico sistema di gioco (${activeSystem}) vanno scritte sotto il percorso:\n` +
-                    `  wiki-works/regole/${activeSystem}/\n` +
-                    `  Esempi di regole: wiki-works/regole/${activeSystem}/combattimento.md, wiki-works/regole/${activeSystem}/incantesimi.md\n` +
-                    `- MEMORIA VETTORIALE (STORICO DEI TURNI): Al termine di ogni risposta narrativa (dopo l'esito delle azioni del giocatore), devi SEMPRE chiamare il tool 'rpg_log_turn' (o il suo alias 'dnd_log_turn') per salvare la sintesi del turno corrente. Il tool farà avanzare il contatore del turno nel JSON di stato.\n` +
-                    `- CREAZIONE DI LORE E NPC DA PARTE DEL GIOCATORE: Ricorda al giocatore che può creare NPC e lore in due modi: 1) descrivendoli direttamente in chat (tu li registrerai in 'mondo.npcs_incontrati' e nei riassunti di turno), o 2) inserendo file Markdown dettagliati sotto 'wiki-works/avventure/${activeRunId}/entities/<nome-npc>.md' (che verranno indicizzati e richiamati dal RAG quando citati in chat).\n` +
-                    `- COMPAGNI E PARTY MULTIPLAYER: La sessione supporta più personaggi giocanti sotto 'personaggi'. Ciascuno è legato al rispettivo giocatore. Se un NPC si unisce al gruppo come compagno d'avventura attivo nei combattimenti (con HP, CA e statistiche), registralo come personaggio usando il tool 'rpg_create_character' impostando 'giocatore' su '@NPC' o '@Master'. Se è un compagno solo narrativo, inseriscilo in 'mondo.npcs_incontrati' con stato 'alleato' o 'compagno'.\n` +
-                    `- NARRAZIONE VOCALE (TTS): Se il giocatore chiede esplicitamente di ascoltare la narrazione o dice parole chiave come 'leggi', 'parla', 'voce', 'narra', usa il tool 'rpg_narrate' (o 'dnd_narrate') passando il tuo testo narrativo per riprodurlo a voce dagli altoparlanti del suo computer.\n` +
-                    `</rpg-state>\n`;
-                parts.push(stateInjection);
+                const formattedState = summarizeActiveState(state, activeRunId);
+                // ① STATO JSON: inietta solo quando cambia dal turno precedente (delta)
+                if (lastInjectedState.get(currentSessionKey) !== formattedState) {
+                    lastInjectedState.set(currentSessionKey, formattedState);
+                    parts.push(`\n<rpg-state>\n` +
+                        `Stato attivo essenziale. Usa questo per rispondere ora; pesca wiki/lore/regole solo se serve.\n` +
+                        `${formattedState}\n` +
+                        `</rpg-state>\n`);
+                }
+                // ② REGOLE PROCEDURALI: una sola volta per sessione (non a ogni turno)
+                if (!sessionsRulesShown.has(currentSessionKey)) {
+                    sessionsRulesShown.add(currentSessionKey);
+                    parts.push(`\n<rpg-rules>\n` +
+                        `- SKILL GM: se non l'hai gia' fatto in questa sessione, leggi 'skills/rpg-gm.md'. Segui quella procedura per ciclo di gioco, manuale attivo, uso tool e ritmo di salvataggio.\n` +
+                        `MANDATORY RULES FOR WIKI INGEST IN THIS CAMPAIGN:\n` +
+                        `- Qualsiasi nuova pagina wiki specifica di questa campagna (NPC, lore, riassunti, quest) deve essere scritta sotto il percorso isolato:\n` +
+                        `  wiki-works/avventure/${activeRunId}/\n` +
+                        `  Esempi:\n` +
+                        `  - Entità/NPC: wiki-works/avventure/${activeRunId}/entities/nome-npc.md.tmp\n` +
+                        `  - Concetti/Luoghi: wiki-works/avventure/${activeRunId}/concepts/nome-luogo.md.tmp\n` +
+                        `  - Riassunti di sessione: wiki-works/avventure/${activeRunId}/synthesis/sessione-001.md.tmp\n` +
+                        `- NON scrivere mai pagine specifiche della campagna sotto wiki-works/avventure/ o direttamente sotto wiki/.\n` +
+                        `- Le regole condivise di questo specifico sistema di gioco (${activeSystem}) vanno scritte sotto il percorso:\n` +
+                        `  wiki-works/regole/${activeSystem}/\n` +
+                        `  Esempi di regole: wiki-works/regole/${activeSystem}/combattimento.md, wiki-works/regole/${activeSystem}/incantesimi.md\n` +
+                        `- MEMORIA VETTORIALE (STORICO DEI TURNI): non chiamare 'rpg_log_turn' dopo ogni risposta. Salva solo ogni 3 scambi narrativi circa, su richiesta del giocatore, a fine sessione o quando accade una svolta reale (combattimento, nuovo luogo/NPC, rivelazione).\n` +
+                        `- COERENZA E DESCRIZIONI: mantieni coerenti per tutta la campagna protagonista, party, NPC, mappe/luoghi e la lore nascosta già stabilita (non contraddire nomi, aspetto fisico, fatti). Ogni personaggio e NPC rilevante deve avere una descrizione dell'ASPETTO FISICO oltre a personalità e statistiche.\n` +
+                        `- CREAZIONE DI LORE E NPC DA PARTE DEL GIOCATORE: il giocatore può creare NPC e lore in due modi: 1) descrivendoli in chat (tu li registri in 'mondo.npcs_incontrati' e nei riassunti di turno), o 2) inserendo file Markdown sotto 'wiki-works/avventure/${activeRunId}/entities/<nome-npc>.md' (indicizzati e richiamati dal RAG quando citati).\n` +
+                        `- COMPAGNI E PARTY MULTIPLAYER: la sessione supporta più personaggi sotto 'personaggi', ciascuno legato al rispettivo giocatore. Un NPC che si unisce come compagno attivo in combattimento (con HP, CA, statistiche) va registrato con 'rpg_create_character' impostando 'giocatore' su '@NPC' o '@Master'. Un compagno solo narrativo va in 'mondo.npcs_incontrati' con stato 'alleato' o 'compagno'.\n` +
+                        `- NARRAZIONE VOCALE (TTS): se il giocatore chiede di ascoltare la narrazione o usa parole come 'leggi', 'parla', 'voce', 'narra', usa 'rpg_narrate' (o 'dnd_narrate') passando il testo narrativo.\n` +
+                        `</rpg-rules>\n`);
+                }
                 // Verifica se attivare il PC Creation Wizard
                 const numCharacters = Object.keys(state.personaggi || {}).length;
                 const userLower = userText.toLowerCase();
@@ -845,12 +898,17 @@ refresh();setInterval(refresh,2500);
                             `5. Se tutti i nemici sono sconfitti o se il combattimento si conclude, chiama immediatamente il tool 'rpg_combat_end' per terminare la modalità strutturata.\n` +
                             `</rpg-combat>\n`;
                 }
+                if (promptCount % 3 === 0) {
+                    parts.push(`\n<rpg-save-rhythm>\n` +
+                        `Se negli ultimi 3 scambi e' successo qualcosa da ricordare, chiama 'rpg_log_turn' con una sintesi di 2-4 righe. Se non e' cambiato nulla, non salvare.\n` +
+                        `</rpg-save-rhythm>\n`);
+                }
             }
             catch (err) {
                 console.error(`[master-dnd-plugin] Error loading state for inject:`, err);
             }
-            // 2. INJECT WIKI RAG CONTEXT (if enabled and user prompt is not empty)
-            if (wikiEnabled && userText.trim()) {
+            // 2. INJECT WIKI RAG CONTEXT only when useful.
+            if (wikiEnabled && userText.trim() && wantsWikiContext(userText)) {
                 // A. Session Briefing (First prompt of session only)
                 const currentSessionKey = ctx?.sessionKey || "global";
                 if (!sessionsBriefed.has(currentSessionKey)) {
@@ -868,25 +926,29 @@ refresh();setInterval(refresh,2500);
                     }
                 }
                 // B. Wiki Context Retrieval
-                let contextInjected = false;
+                // serverAnswered = il server FastAPI ha risposto (anche con corpo vuoto = "nessun contesto
+                // rilevante", risposta valida). Il fallback CLI deve scattare SOLO se il server è
+                // irraggiungibile: altrimenti ogni risposta vuota cold-loaderebbe bge-m3 (>15s) mandando
+                // l'hook in timeout a ogni messaggio.
+                let serverAnswered = false;
                 // Attempt fast HTTP call to FastAPI server
                 try {
                     const runIdParam = activeRunId ? `&run_id=${encodeURIComponent(activeRunId)}` : "";
-                    const url = `http://localhost:${serverPort}/api/context?q=${encodeURIComponent(userText)}&k=${k}&max_chars=${maxChars}${runIdParam}`;
+                    const url = `http://127.0.0.1:${serverPort}/api/context?q=${encodeURIComponent(userText)}&k=${k}&max_chars=${maxChars}&min_relevance=${minRelevance}${runIdParam}`;
                     const resp = await fetch(url, { signal: AbortSignal.timeout(3_000) });
                     if (resp.ok) {
+                        serverAnswered = true;
                         const text = (await resp.text()).trim();
                         if (text) {
                             parts.push(text);
-                            contextInjected = true;
                         }
                     }
                 }
                 catch {
                     // Server not responding, fall through to CLI subprocess
                 }
-                // Subprocess fallback if HTTP failed
-                if (!contextInjected && existsSync(wikiContextScript)) {
+                // Subprocess fallback solo se il server è irraggiungibile (non se ha risposto vuoto)
+                if (!serverAnswered && existsSync(wikiContextScript)) {
                     try {
                         const result = await execFileAsync(python, [
                             wikiContextScript,
@@ -894,6 +956,7 @@ refresh();setInterval(refresh,2500);
                             "--q", userText,
                             "--k", k,
                             "--max-chars", maxChars,
+                            "--min-relevance", String(minRelevance),
                             ...(activeRunId ? ["--run-id", activeRunId] : [])
                         ], { encoding: "utf-8", timeout: 15_000 });
                         const context = result.stdout.trim();

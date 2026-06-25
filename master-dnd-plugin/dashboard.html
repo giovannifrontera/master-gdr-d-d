@@ -360,7 +360,7 @@ h2{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:4px;text-transform:
 
 <script>
 const W=8,H=6,DASH_PORT=__DASH_PORT__;
-const WS_PROXY=`ws://localhost:${__DASH_PORT__}/ws`;
+const WS_PROXY=`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws`;
 let SESSION_KEY='main';
 
 /* ─── Utilities ─── */

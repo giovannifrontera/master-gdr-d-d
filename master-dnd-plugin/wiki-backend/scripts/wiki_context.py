@@ -57,6 +57,8 @@ def main():
                         help="Caratteri massimi per chunk (default: 600)")
     parser.add_argument("--run-id", default="", dest="run_id",
                         help="ID della run di gioco attiva per isolamento RAG.")
+    parser.add_argument("--min-relevance", type=float, default=0.3, dest="min_relevance",
+                        help="Scarta i chunk con relevance score sotto questa soglia (default: 0.3).")
     args = parser.parse_args()
 
     # Shell expansion of $CLAUDE_USER_PROMPT is unreliable on Windows (PowerShell
@@ -79,6 +81,13 @@ def _run(args):
     cfg = load_config(args.workspace)
     if not cfg:
         return
+
+    runtime_tmp = os.path.join(args.workspace, "memory", "tmp")
+    os.makedirs(runtime_tmp, exist_ok=True)
+    for name in ("TEMP", "TMP", "TMPDIR", "TORCHINDUCTOR_CACHE_DIR"):
+        os.environ.setdefault(name, runtime_tmp)
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
     lancedb_path = os.path.join(args.workspace, cfg["lancedb"]["path"])
     if not os.path.exists(lancedb_path):
@@ -106,6 +115,11 @@ def _run(args):
     table = db.open_table("wiki_pages")
     model = SentenceTransformer(cfg["lancedb"]["embedding_model"])
     vector = model.encode(args.q, normalize_embeddings=True).tolist()
+    q_lower = args.q.lower()
+    wants_rules = any(word in q_lower for word in (
+        "regola", "regole", "manuale", "danno", "danni", "incantesimo",
+        "incantesimi", "tiro", "tiri", "pool", "chiave", "segreto"
+    ))
 
     # Load active run and system if exists
     active_run_id = args.run_id or None
@@ -155,6 +169,8 @@ def _run(args):
 
         # Rulebook system isolation filtering
         if path.startswith("wiki-works/regole/"):
+            if not wants_rules:
+                continue
             parts = path.split("/")
             if len(parts) > 2:
                 folder_system = parts[2]
@@ -165,7 +181,14 @@ def _run(args):
         if path not in seen or dist < seen[path]["dist"]:
             seen[path] = {"dist": dist, "chunk_text": chunk[: args.max_chars]}
 
-    top = sorted(seen.items(), key=lambda x: x[1]["dist"])[: args.k]
+    def relevance(path: str, info: dict) -> float:
+        score = 1.0 - (info["dist"] / 2.0)
+        if active_run_id and path.startswith(f"wiki-works/avventure/{active_run_id}/"):
+            score += 0.15
+        return min(1.0, score)
+
+    relevant = {p: i for p, i in seen.items() if relevance(p, i) >= args.min_relevance}
+    top = sorted(relevant.items(), key=lambda x: relevance(x[0], x[1]), reverse=True)[: args.k]
 
     # Check for stale .tmp files — warn regardless of whether semantic results exist
     stale_tmp = []
@@ -204,7 +227,7 @@ def _run(args):
             f"Pre-loaded wiki context (top {len(top)} pages by semantic relevance):\n"
         )
     for path, info in top:
-        score = round(1.0 - info["dist"], 3)
+        score = round(relevance(path, info), 3)
         lines.append(f"### {path}  [relevance: {score}]")
         lines.append(info["chunk_text"])
         lines.append("")

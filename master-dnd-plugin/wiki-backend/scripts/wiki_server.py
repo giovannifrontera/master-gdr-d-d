@@ -249,6 +249,12 @@ async def _get_embed_model():
         return _embed_model
     async with _embed_model_lock:
         if _embed_model is None:
+            runtime_tmp = os.path.join(_workspace, "memory", "tmp")
+            os.makedirs(runtime_tmp, exist_ok=True)
+            for _env_name in ("TEMP", "TMP", "TMPDIR", "TORCHINDUCTOR_CACHE_DIR"):
+                os.environ.setdefault(_env_name, runtime_tmp)
+            os.environ.setdefault("HF_HUB_OFFLINE", "1")
+            os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
             import os as _os
             _os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
             _os.environ.setdefault("HF_HUB_VERBOSITY", "error")
@@ -269,7 +275,7 @@ _LOCALHOST_ADDRS = {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
 
 
 @app.get("/api/context")
-async def api_context(request: Request, q: str = "", k: int = 3, max_chars: int = 600, run_id: str = None):
+async def api_context(request: Request, q: str = "", k: int = 3, max_chars: int = 600, run_id: str = None, min_relevance: float = 0.3):
     """Vector search endpoint for the plugin hot path — restricted to loopback callers."""
     from fastapi.responses import PlainTextResponse
     peer = (request.client.host if request.client else None)
@@ -290,6 +296,11 @@ async def api_context(request: Request, q: str = "", k: int = 3, max_chars: int 
         if "wiki_pages" not in existing_tables:
             return PlainTextResponse("", status_code=200)
         table = db.open_table("wiki_pages")
+        q_lower = q.lower()
+        wants_rules = any(word in q_lower for word in (
+            "regola", "regole", "manuale", "danno", "danni", "incantesimo",
+            "incantesimi", "tiro", "tiri", "pool", "chiave", "segreto"
+        ))
 
         # Load active run and system if exists
         active_run_id = run_id or None
@@ -338,6 +349,8 @@ async def api_context(request: Request, q: str = "", k: int = 3, max_chars: int 
 
             # Rulebook system isolation filtering
             if path.startswith("wiki-works/regole/"):
+                if not wants_rules:
+                    continue
                 parts = path.split("/")
                 if len(parts) > 2:
                     folder_system = parts[2]
@@ -348,7 +361,14 @@ async def api_context(request: Request, q: str = "", k: int = 3, max_chars: int 
             if path not in seen or dist < seen[path]["dist"]:
                 seen[path] = {"dist": dist, "chunk_text": chunk[:max_chars]}
 
-        top = sorted(seen.items(), key=lambda x: x[1]["dist"])[:k]
+        def relevance(path: str, info: dict) -> float:
+            score = 1.0 - (info["dist"] / 2.0)
+            if active_run_id and path.startswith(f"wiki-works/avventure/{active_run_id}/"):
+                score += 0.15
+            return min(1.0, score)
+
+        relevant = {p: i for p, i in seen.items() if relevance(p, i) >= min_relevance}
+        top = sorted(relevant.items(), key=lambda x: relevance(x[0], x[1]), reverse=True)[:k]
 
         # Stale .tmp check — surfaced regardless of search results
         stale_tmp = []
@@ -383,11 +403,11 @@ async def api_context(request: Request, q: str = "", k: int = 3, max_chars: int 
             lines.append("")
         if top:
             lines.append(f"Pre-loaded wiki context (top {len(top)} pages by semantic relevance):\n")
-            for path, info in top:
-                score = round(1.0 - info["dist"], 3)
-                lines.append(f"### {path}  [relevance: {score}]")
-                lines.append(info["chunk_text"])
-                lines.append("")
+        for path, info in top:
+            score = round(relevance(path, info), 3)
+            lines.append(f"### {path}  [relevance: {score}]")
+            lines.append(info["chunk_text"])
+            lines.append("")
         lines.append(
             "</wiki-context>\n"
             "Use the context above to inform your response, detect conflicts during INGEST, "
@@ -463,6 +483,9 @@ async def _broadcast(message: dict) -> None:
 
 @app.on_event("startup")
 async def startup():
+    # Pre-carica il modello di embedding in background: il cold load (>15s) avviene
+    # qui all'avvio, non alla prima query di gioco (che altrimenti manda in timeout l'hook).
+    asyncio.create_task(_get_embed_model())
     asyncio.create_task(_file_watcher())
     asyncio.create_task(_query_log_watcher())
     asyncio.create_task(_auto_lint_task())
