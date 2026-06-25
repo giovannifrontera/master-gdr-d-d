@@ -83,6 +83,34 @@ function setNestedValue(obj, path, value) {
     }
     current[parts[parts.length - 1]] = value;
 }
+function characterKey(name) {
+    return String(name || "").toLowerCase().trim().replace(/\s+/g, "_");
+}
+function normalizeCharacter(name, giocatore, sheet = {}, tipo = "giocatore") {
+    const normalized = { ...sheet };
+    normalized.nome = normalized.nome || name;
+    normalized.giocatore = normalized.giocatore || giocatore;
+    normalized.tipo = normalized.tipo || tipo;
+    if (normalized.hp) {
+        const max = Number(normalized.hp.max ?? normalized.hp.massimi ?? normalized.hp.correnti ?? 10);
+        const correnti = Number(normalized.hp.correnti ?? max);
+        normalized.hp = { max, correnti: Math.max(0, Math.min(max, correnti)) };
+    }
+    return normalized;
+}
+function normalizeGameState(state) {
+    if (!state || typeof state !== "object") return state;
+    const normalizedCharacters = {};
+    for (const [key, value] of Object.entries(state.personaggi || {})) {
+        if (!value || typeof value !== "object") continue;
+        const name = value.nome || key;
+        normalizedCharacters[characterKey(name)] = normalizeCharacter(name, value.giocatore, value, value.tipo || "giocatore");
+    }
+    state.personaggi = normalizedCharacters;
+    state.mondo = state.mondo || {};
+    state.mondo.npcs_incontrati = Array.isArray(state.mondo.npcs_incontrati) ? state.mondo.npcs_incontrati : [];
+    return state;
+}
 // Function to initialize wiki workspace under user specified data folder dynamically
 function initWikiWorkspace(wikiDataDir, defaultCfgPath) {
     if (!existsSync(wikiDataDir)) {
@@ -236,7 +264,7 @@ export default definePluginEntry({
             if (!existsSync(file)) {
                 throw new Error(`Session state file not found for run ID: ${runId}`);
             }
-            return JSON.parse(readFileSync(file, "utf-8"));
+            return normalizeGameState(JSON.parse(readFileSync(file, "utf-8")));
         };
         const saveState = (runId, state, sessionKey) => {
             ensureStateDir();
@@ -284,6 +312,7 @@ export default definePluginEntry({
             catch (err) {
                 console.error(`[master-dnd-plugin] Backup folder initialization error:`, err);
             }
+            state = normalizeGameState(state);
             // Write the new state file atomically (tmp + rename) to avoid corrupting the save on a mid-write crash
             const tmpFile = `${file}.tmp`;
             writeFileSync(tmpFile, JSON.stringify(state, null, 2), "utf-8");
@@ -989,11 +1018,12 @@ refresh();setInterval(refresh,2500);
                         const sistema = rawParams.sistema || "dnd5e";
                         let personaggi = {};
                         if (rawParams.scheda_personaggio) {
-                            personaggi = rawParams.scheda_personaggio;
+                            const charName = rawParams.character_name || rawParams.scheda_personaggio.nome || rawParams.giocatore;
+                            personaggi[characterKey(charName)] = normalizeCharacter(charName, rawParams.giocatore, rawParams.scheda_personaggio);
                         }
                         else if (rawParams.character_name) {
                             // Map old D&D parameters to character sheet
-                            const charName = rawParams.character_name.toLowerCase().trim();
+                            const charName = rawParams.character_name;
                             const level = rawParams.livello || 1;
                             const hpMax = rawParams.hp_max || 10;
                             const ca = rawParams.ca || 10;
@@ -1001,7 +1031,8 @@ refresh();setInterval(refresh,2500);
                             const stats = rawParams.stats ? { ...defaultStats, ...rawParams.stats } : defaultStats;
                             const inventory = rawParams.inventario || ["Vestiti comuni", "Razioni (5)"];
                             personaggi = {
-                                [charName]: {
+                                [characterKey(charName)]: {
+                                    nome: charName,
                                     giocatore: rawParams.giocatore,
                                     razza: rawParams.razza || "Sconosciuta",
                                     classe: rawParams.classe || "Sconosciuta",
@@ -1375,6 +1406,7 @@ refresh();setInterval(refresh,2500);
                         run_id: { type: "string", description: "L'ID della sessione attiva (opzionale)." },
                         character_name: { type: "string", description: "Il nome del personaggio da creare o modificare." },
                         giocatore: { type: "string", description: "Il nome/tag del giocatore (es: @Mario)." },
+                        tipo: { type: "string", enum: ["giocatore", "npc", "compagno"], default: "giocatore", description: "Tipo di personaggio salvato." },
                         scheda_personaggio: {
                             type: "object",
                             description: "La scheda personaggio completa in formato JSON. Può seguire il tracciato D&D o una struttura libera del sistema scelto."
@@ -1392,11 +1424,17 @@ refresh();setInterval(refresh,2500);
                         if (!state.personaggi) {
                             state.personaggi = {};
                         }
-                        const charNameKey = rawParams.character_name.toLowerCase().trim();
-                        state.personaggi[charNameKey] = {
-                            giocatore: rawParams.giocatore,
-                            ...rawParams.scheda_personaggio
-                        };
+                        const tipo = rawParams.tipo || (String(rawParams.giocatore || "").startsWith("@NPC") ? "npc" : "giocatore");
+                        const charNameKey = characterKey(rawParams.character_name);
+                        state.personaggi[charNameKey] = normalizeCharacter(rawParams.character_name, rawParams.giocatore, rawParams.scheda_personaggio, tipo);
+                        if (tipo !== "giocatore") {
+                            state.mondo = state.mondo || {};
+                            state.mondo.npcs_incontrati = Array.isArray(state.mondo.npcs_incontrati) ? state.mondo.npcs_incontrati : [];
+                            const idx = state.mondo.npcs_incontrati.findIndex((n) => characterKey(n.nome) === charNameKey);
+                            const npc = { nome: rawParams.character_name, stato: tipo, giocatore: rawParams.giocatore };
+                            if (idx === -1) state.mondo.npcs_incontrati.push(npc);
+                            else state.mondo.npcs_incontrati[idx] = { ...state.mondo.npcs_incontrati[idx], ...npc };
+                        }
                         saveState(runId, state, ctx?.sessionKey);
                         return {
                             status: "success",
@@ -1448,14 +1486,14 @@ refresh();setInterval(refresh,2500);
                                 initVal = Math.floor(Math.random() * 20) + 1;
                             }
                             let hp = undefined;
-                            if (c.tipo === "giocatore") {
-                                const charKey = c.nome.toLowerCase().trim();
+                            if (c.tipo !== "mostro") {
+                                const charKey = characterKey(c.nome);
                                 const p = state.personaggi?.[charKey];
                                 if (p && p.hp) {
                                     hp = { max: p.hp.max, correnti: p.hp.correnti };
                                 }
                                 else {
-                                    hp = { max: 10, correnti: 10 };
+                                    throw new Error(`Combattente '${c.nome}' non trovato tra i personaggi salvati. Usa prima rpg_create_character.`);
                                 }
                             }
                             else {
@@ -1556,7 +1594,7 @@ refresh();setInterval(refresh,2500);
                             return { status: "error", message: "Nessuna run attiva trovata." };
                         }
                         const state = loadState(runId);
-                        const targetName = rawParams.nome.toLowerCase().trim();
+                        const targetName = characterKey(rawParams.nome);
                         const dmgVal = rawParams.valore;
                         let found = false;
                         let message = "";
@@ -1572,7 +1610,7 @@ refresh();setInterval(refresh,2500);
                             }
                         }
                         if (state.combattimento && state.combattimento.attivo) {
-                            const idx = state.combattimento.ordine_iniziativa.findIndex((c) => c.nome.toLowerCase().trim() === targetName);
+                            const idx = state.combattimento.ordine_iniziativa.findIndex((c) => characterKey(c.nome) === targetName);
                             if (idx !== -1) {
                                 const c = state.combattimento.ordine_iniziativa[idx];
                                 if (c.hp) {
@@ -1659,7 +1697,7 @@ refresh();setInterval(refresh,2500);
                         if (!runId) return { status: "error", message: "Nessuna run attiva trovata." };
                         const state = loadState(runId);
                         if (!state.combattimento?.attivo) return { status: "error", message: "Nessun combattimento attivo." };
-                        const idx = state.combattimento.ordine_iniziativa.findIndex(c => c.nome.toLowerCase() === rawParams.nome.toLowerCase());
+                        const idx = state.combattimento.ordine_iniziativa.findIndex(c => characterKey(c.nome) === characterKey(rawParams.nome));
                         if (idx === -1) return { status: "error", message: `Combattente '${rawParams.nome}' non trovato nell'iniziativa.` };
                         state.combattimento.ordine_iniziativa[idx].x = Math.max(0, Math.min(7, rawParams.x));
                         state.combattimento.ordine_iniziativa[idx].y = Math.max(0, Math.min(5, rawParams.y));
