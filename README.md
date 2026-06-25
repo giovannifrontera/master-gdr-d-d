@@ -46,14 +46,11 @@ The result is an AI Game Master that can keep track of the table instead of impr
 flowchart LR
     Player[Player] --> OpenClaw[OpenClaw Agent]
     OpenClaw --> GM[master-dnd-plugin]
-    OpenClaw --> WikiHook[wiki-context-plugin]
-
     GM --> State[(JSON campaign state)]
     GM --> Dashboard[Browser dashboard]
     GM --> TTS[Windows TTS]
     GM --> Tools[Dice, sheets, combat tools]
-
-    WikiHook --> WikiPy[wiki_context.py]
+    GM --> WikiPy[Bundled wiki backend]
     WikiPy --> Lance[(LanceDB vectors)]
     WikiPy --> Notes[Wiki pages and rule notes]
 
@@ -74,10 +71,9 @@ flowchart LR
 
 | Plugin | Role | Main files |
 | --- | --- | --- |
-| `master-dnd-plugin` | Core Game Master engine | `src/index.ts`, `index.js`, `dashboard.html` |
-| `wiki-context-plugin` | RAG context injector | `wiki/plugins/wiki-context-plugin/` |
+| `master-dnd-plugin` | Core Game Master engine plus bundled wiki/RAG injector | `index.js`, `dashboard.html`, `wiki-backend/` |
 
-Both plugins are installed into OpenClaw and work together during every conversation.
+Install only `master-dnd-plugin` for OpenClaw. `wiki/plugins/wiki-context-plugin/` is kept for standalone wiki use; installing both causes duplicate prompt injection.
 
 ## Quick Start
 
@@ -134,23 +130,21 @@ cd master-gdr-d-d
 .\install.ps1
 ```
 
-**Manual:** for each plugin, OpenClaw needs three things under the `plugins` section: the plugin directory in **`load.paths`**, its id in **`allow`**, and an **`entries`** record with `enabled` + `config`. Full config (with all options) is documented in [`master-dnd-plugin/README.md`](master-dnd-plugin/README.md#2-registra-il-plugin-in-openclaw).
+**Manual:** OpenClaw needs three things under the `plugins` section: the plugin directory in **`load.paths`**, its id in **`allow`**, and an **`entries`** record with `enabled` + `config`. Full config (with all options) is documented in [`master-dnd-plugin/README.md`](master-dnd-plugin/README.md#2-registra-il-plugin-in-openclaw).
 
-Minimal example registering both plugins:
+Minimal example:
 
 ```json
 {
   "plugins": {
     "load": {
       "paths": [
-        "C:/Users/<utente>/master-gdr-d-d/master-dnd-plugin",
-        "C:/Users/<utente>/master-gdr-d-d/wiki/plugins/wiki-context-plugin"
+        "C:/Users/<utente>/master-gdr-d-d/master-dnd-plugin"
       ]
     },
-    "allow": ["master-dnd-plugin", "wiki-context-plugin"],
+    "allow": ["master-dnd-plugin"],
     "entries": {
-      "master-dnd-plugin": { "enabled": true, "config": {} },
-      "wiki-context-plugin": { "enabled": true, "config": {} }
+      "master-dnd-plugin": { "enabled": true, "config": {} }
     }
   }
 }
@@ -175,7 +169,7 @@ python -m pip install -r master-dnd-plugin\wiki-backend\requirements.txt
 After starting a campaign, open:
 
 ```text
-http://localhost:7332/
+http://localhost:47332/
 ```
 
 The dashboard is designed for the live table:
@@ -211,18 +205,9 @@ All keys are optional. Add overrides only when you need custom paths or ports.
           "stateDirectory": "C:/my-campaigns/state",
           "pythonExecutable": "python",
           "serverPort": 7331,
-          "dashboardPort": 7332,
+          "dashboardPort": 47332,
           "wikiEnabled": true,
           "debug": false
-        }
-      },
-      "wiki-context-plugin": {
-        "config": {
-          "workspace": "C:/my-campaigns/wiki",
-          "wikiContextScript": "C:/my-campaigns/wiki/scripts/wiki_context.py",
-          "k": 3,
-          "maxChars": 600,
-          "timeoutMs": 15000
         }
       }
     }
@@ -235,14 +220,13 @@ All keys are optional. Add overrides only when you need custom paths or ports.
 ```text
 master-gdr-d-d/
 |-- master-dnd-plugin/              OpenClaw plugin for RPG state and tools
-|   |-- src/index.ts                TypeScript source
 |   |-- index.js                    Built plugin entry loaded by OpenClaw
 |   |-- openclaw.plugin.json        Plugin manifest
 |   |-- dashboard.html              Browser dashboard
 |   `-- wiki-backend/               Bundled Python helper scripts
 |-- wiki/                           Wiki/RAG subsystem
 |   |-- scripts/                    Python CLI, server, embedding and PDF tools
-|   |-- plugins/wiki-context-plugin OpenClaw context-injection plugin
+|   |-- plugins/wiki-context-plugin Legacy standalone context plugin
 |   |-- requirements.txt            Python dependencies
 |   `-- wiki.config.json            Wiki configuration
 |-- install.ps1                     Windows installer

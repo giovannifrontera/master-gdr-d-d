@@ -269,7 +269,7 @@ _LOCALHOST_ADDRS = {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
 
 
 @app.get("/api/context")
-async def api_context(request: Request, q: str = "", k: int = 3, max_chars: int = 600):
+async def api_context(request: Request, q: str = "", k: int = 3, max_chars: int = 600, run_id: str = None):
     """Vector search endpoint for the plugin hot path — restricted to loopback callers."""
     from fastapi.responses import PlainTextResponse
     peer = (request.client.host if request.client else None)
@@ -292,7 +292,7 @@ async def api_context(request: Request, q: str = "", k: int = 3, max_chars: int 
         table = db.open_table("wiki_pages")
 
         # Load active run and system if exists
-        active_run_id = None
+        active_run_id = run_id or None
         active_system = None
         try:
             parent = os.path.dirname(_workspace)
@@ -301,17 +301,18 @@ async def api_context(request: Request, q: str = "", k: int = 3, max_chars: int 
                 if os.path.exists(os.path.join(parent, "active_run.json")):
                     state_dir = parent
             
-            active_run_path = os.path.join(state_dir, "active_run.json")
-            if os.path.exists(active_run_path):
-                with open(active_run_path, encoding="utf-8") as f:
-                    active_run_id = json.load(f).get("active_run_id")
-                
-                if active_run_id:
-                    run_state_path = os.path.join(state_dir, f"{active_run_id}.json")
-                    if os.path.exists(run_state_path):
-                        with open(run_state_path, encoding="utf-8") as f:
-                            run_state = json.load(f)
-                            active_system = run_state.get("sistema") or run_state.get("system") or "dnd5e"
+            if not active_run_id:
+                active_run_path = os.path.join(state_dir, "active_run.json")
+                if os.path.exists(active_run_path):
+                    with open(active_run_path, encoding="utf-8") as f:
+                        active_run_id = json.load(f).get("active_run_id")
+
+            if active_run_id:
+                run_state_path = os.path.join(state_dir, f"{active_run_id}.json")
+                if os.path.exists(run_state_path):
+                    with open(run_state_path, encoding="utf-8") as f:
+                        run_state = json.load(f)
+                        active_system = run_state.get("sistema") or run_state.get("system") or "dnd5e"
         except Exception:
             pass
 

@@ -35,6 +35,8 @@ DEFAULT_STATE_DIR = PLUGIN_DIR.parent / "state"
 
 # Il file di config di OpenClaw si chiama openclaw.json (non config.json).
 CANDIDATE_PATHS = [
+    Path(os.environ["OPENCLAW_HOME"]) / ".openclaw" / "openclaw.json"
+    if os.environ.get("OPENCLAW_HOME") else None,
     Path.home() / ".openclaw" / "openclaw.json",
     Path.home() / ".config" / "openclaw" / "openclaw.json",
     Path(os.environ.get("APPDATA", "")) / "openclaw" / "openclaw.json",
@@ -47,7 +49,7 @@ CANDIDATE_PATHS = [
 
 def find_openclaw_config():
     for p in CANDIDATE_PATHS:
-        if p.exists():
+        if p and p.exists():
             return p
     return None
 
@@ -80,7 +82,10 @@ def register_plugin(config: dict, plugin_id: str, plugin_dir: str, entry_config:
         changed = True
 
     entries = plugins.setdefault("entries", {})
-    desired = {"enabled": True, "config": entry_config}
+    current = entries.get(plugin_id) if isinstance(entries.get(plugin_id), dict) else {}
+    current_config = current.get("config") if isinstance(current.get("config"), dict) else {}
+    desired_config = {**current_config, **entry_config}
+    desired = {**current, "enabled": True, "config": desired_config}
     if entries.get(plugin_id) != desired:
         entries[plugin_id] = desired
         changed = True
@@ -126,7 +131,7 @@ def main() -> None:
 
     # Carica il config esistente
     try:
-        with open(config_path, encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8-sig") as f:
             config = json.load(f)
     except json.JSONDecodeError as e:
         print(f"ERRORE: {config_path} non e' JSON valido: {e}", file=sys.stderr)
@@ -187,6 +192,9 @@ def _self_test() -> None:
     assert cfg2["plugins"]["load"]["paths"] == ["/other", "/dir"]
     assert set(cfg2["plugins"]["allow"]) == {"other", "p"}
     assert cfg2["plugins"]["entries"]["other"] == {"enabled": True, "config": {}}
+    cfg3 = {"plugins": {"entries": {"p": {"enabled": False, "config": {"debug": True, "k": 1}}}}}
+    assert register_plugin(cfg3, "p", "/dir", {"k": 2}) is True
+    assert cfg3["plugins"]["entries"]["p"] == {"enabled": True, "config": {"debug": True, "k": 2}}
     print("self-test OK")
 
 

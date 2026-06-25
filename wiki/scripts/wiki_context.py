@@ -55,6 +55,8 @@ def main():
                         help="Numero di pagine da restituire (default: 3)")
     parser.add_argument("--max-chars", type=int, default=600, dest="max_chars",
                         help="Caratteri massimi per chunk (default: 600)")
+    parser.add_argument("--run-id", default="", dest="run_id",
+                        help="ID della run di gioco attiva per isolamento RAG.")
     args = parser.parse_args()
 
     # Shell expansion of $CLAUDE_USER_PROMPT is unreliable on Windows (PowerShell
@@ -106,7 +108,7 @@ def _run(args):
     vector = model.encode(args.q, normalize_embeddings=True).tolist()
 
     # Load active run and system if exists
-    active_run_id = None
+    active_run_id = args.run_id or None
     active_system = None
     try:
         parent = os.path.dirname(args.workspace)
@@ -115,17 +117,18 @@ def _run(args):
             if os.path.exists(os.path.join(parent, "active_run.json")):
                 state_dir = parent
         
-        active_run_path = os.path.join(state_dir, "active_run.json")
-        if os.path.exists(active_run_path):
-            with open(active_run_path, encoding="utf-8") as f:
-                active_run_id = json.load(f).get("active_run_id")
-            
-            if active_run_id:
-                run_state_path = os.path.join(state_dir, f"{active_run_id}.json")
-                if os.path.exists(run_state_path):
-                    with open(run_state_path, encoding="utf-8") as f:
-                        run_state = json.load(f)
-                        active_system = run_state.get("sistema") or run_state.get("system") or "dnd5e"
+        if not active_run_id:
+            active_run_path = os.path.join(state_dir, "active_run.json")
+            if os.path.exists(active_run_path):
+                with open(active_run_path, encoding="utf-8") as f:
+                    active_run_id = json.load(f).get("active_run_id")
+
+        if active_run_id:
+            run_state_path = os.path.join(state_dir, f"{active_run_id}.json")
+            if os.path.exists(run_state_path):
+                with open(run_state_path, encoding="utf-8") as f:
+                    run_state = json.load(f)
+                    active_system = run_state.get("sistema") or run_state.get("system") or "dnd5e"
     except Exception:
         pass
 

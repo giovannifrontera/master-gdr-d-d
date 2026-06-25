@@ -72,6 +72,11 @@
         "default": 7331,
         "description": "Porta locale per il server wiki (default: 7331)."
       },
+      "dashboardPort": {
+        "type": "integer",
+        "default": 47332,
+        "description": "Porta locale per la dashboard del master (default: 47332)."
+      },
       "debug": {
         "type": "boolean",
         "default": false,

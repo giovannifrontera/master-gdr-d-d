@@ -49,7 +49,7 @@ $snippet = @"
     "entries": {
       "master-dnd-plugin": {
         "enabled": true,
-        "config": { "stateDirectory": "$stateFwd", "pythonExecutable": "python" }
+        "config": { "stateDirectory": "$stateFwd", "pythonExecutable": "python", "dashboardPort": 47332 }
       }
     }
   }

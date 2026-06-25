@@ -26,7 +26,7 @@ git clone https://github.com/giovannifrontera/master-gdr-d-d.git
 py wiki-backend/scripts/setup_openclaw.py
 ```
 
-Lo script trova `openclaw.json`, vi scrive `load.paths` + `allow` + `entries` (in modo idempotente e atomico) e preserva gli altri plugin. Opzioni utili: `--dry-run` (mostra senza scrivere), `--config <path>`, `--state-dir <path>`, `--python <eseguibile>`.
+Lo script trova `openclaw.json` (rispettando anche `OPENCLAW_HOME` per sandbox), vi scrive `load.paths` + `allow` + `entries` (in modo idempotente e atomico) e preserva gli altri plugin. Opzioni utili: `--dry-run` (mostra senza scrivere), `--config <path>`, `--state-dir <path>`, `--python <eseguibile>`.
 
 #### Opzione B — manuale
 
@@ -77,7 +77,7 @@ Al primo avvio il plugin:
 
 ## Dashboard browser
 
-Apri `http://localhost:7332/` per la dashboard in tempo reale:
+Apri `http://localhost:47332/` per la dashboard in tempo reale:
 
 - **Party**: schede personaggio con avatar, HP, statistiche, inventario
 - **Mappa**: ordine di iniziativa + griglia di combattimento 8×6
@@ -116,7 +116,7 @@ Tutti i tool hanno un alias `dnd_*` per compatibilità (es. `dnd_roll`).
     "wikiDataDirectory": "/path/wiki-data",
     "pythonExecutable": "python",
     "serverPort": 7331,
-    "dashboardPort": 7332,
+    "dashboardPort": 47332,
     "k": 3,
     "maxChars": 600,
     "debug": false
