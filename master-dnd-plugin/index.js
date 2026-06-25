@@ -91,6 +91,31 @@ function normalizeCharacter(name, giocatore, sheet = {}, tipo = "giocatore") {
     normalized.nome = normalized.nome || name;
     normalized.giocatore = normalized.giocatore || giocatore;
     normalized.tipo = normalized.tipo || tipo;
+    normalized.aspetto = normalized.aspetto || normalized.descrizione_fisica || normalized.appearance || normalized.descrizione || "";
+    normalized.ritratto = normalized.ritratto || normalized.portrait || normalized.portrait_url || normalized.avatar || "";
+    normalized.ruolo = normalized.ruolo || normalized.role || normalized.archetipo || "";
+    normalized.classe = normalized.classe || normalized.class || "";
+    normalized.razza = normalized.razza || normalized.specie || normalized.race || "";
+    normalized.background = normalized.background || normalized.bg || "";
+    normalized.ca = normalized.ca ?? normalized.ac ?? normalized.classe_armatura;
+    normalized.velocita = normalized.velocita ?? normalized.speed;
+    normalized.bonus_competenza = normalized.bonus_competenza ?? normalized.proficiency_bonus;
+    normalized.hp = normalized.hp || normalized.pf || normalized.punti_ferita;
+    normalized.stats = normalized.stats || normalized.caratteristiche || normalized.abilities;
+    if (normalized.stats) {
+        const s = normalized.stats;
+        normalized.stats = {
+            forza: s.forza ?? s.str ?? s.strength,
+            destrezza: s.destrezza ?? s.des ?? s.dex ?? s.dexterity,
+            costituzione: s.costituzione ?? s.cos ?? s.con ?? s.constitution,
+            intelligenza: s.intelligenza ?? s.int ?? s.intelligence,
+            saggezza: s.saggezza ?? s.sag ?? s.wis ?? s.wisdom,
+            carisma: s.carisma ?? s.car ?? s.cha ?? s.charisma
+        };
+        for (const key of Object.keys(normalized.stats)) {
+            if (normalized.stats[key] === undefined) delete normalized.stats[key];
+        }
+    }
     if (normalized.hp) {
         const max = Number(normalized.hp.max ?? normalized.hp.massimi ?? normalized.hp.correnti ?? 10);
         const correnti = Number(normalized.hp.correnti ?? max);
@@ -1472,7 +1497,7 @@ refresh();setInterval(refresh,2500);
                         tipo: { type: "string", enum: ["giocatore", "npc", "compagno"], default: "giocatore", description: "Tipo di personaggio salvato." },
                         scheda_personaggio: {
                             type: "object",
-                            description: "La scheda personaggio completa in formato JSON. Può seguire il tracciato D&D o una struttura libera del sistema scelto."
+                            description: "La scheda completa in JSON. Oltre alle regole del sistema, includi sempre campi narrativi/visivi: aspetto o descrizione_fisica, ruolo/archetipo, personalità, obiettivo, legami, e opzionalmente ritratto/portrait_url/avatar."
                         }
                     },
                     required: ["character_name", "giocatore", "scheda_personaggio"]

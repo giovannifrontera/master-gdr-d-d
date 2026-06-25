@@ -78,11 +78,13 @@ h2{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:4px;text-transform:
 .pcard-top{display:flex;gap:10px;padding:10px 10px 8px}
 .pcard-portrait{width:60px;height:84px;flex-shrink:0;border-radius:4px;overflow:hidden;
   border:1px solid var(--bdr-s);background:var(--arcane)}
-.pcard-portrait svg{width:100%;height:100%}
+.pcard-portrait svg,.pcard-portrait img{width:100%;height:100%;object-fit:cover;display:block}
 .pcard-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .pcard-name{font-family:'Cinzel',serif;font-weight:700;font-size:.85rem;color:var(--parchment);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pcard-class{font-size:.68rem;color:var(--ash);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard-aspetto{font-size:.66rem;color:var(--parchment);line-height:1.25;opacity:.82;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pcard-badges{display:flex;gap:4px;flex-wrap:wrap}
 .badge{font-family:'Share Tech Mono',monospace;font-size:.5rem;padding:1px 5px;
   border-radius:2px;white-space:nowrap}
@@ -167,10 +169,11 @@ h2{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:4px;text-transform:
   overflow:hidden;position:relative;transition:all .3s}
 .portrait-panel:hover{border-color:var(--bdr-s);transform:translateY(-2px);
   box-shadow:0 8px 24px rgba(0,0,0,.4)}
-.portrait-panel svg{width:100%;height:auto;display:block}
+.portrait-panel svg,.portrait-panel img{width:100%;aspect-ratio:10/13;object-fit:cover;display:block}
 .portrait-label{padding:8px 10px;border-top:1px solid var(--bdr)}
 .portrait-name{font-family:'Cinzel',serif;font-size:.8rem;font-weight:700;color:var(--parchment)}
 .portrait-sub{font-size:.65rem;color:var(--ash);margin-top:1px}
+.portrait-aspetto{font-size:.68rem;color:var(--parchment);line-height:1.35;margin-top:5px;opacity:.82}
 .portrait-hp{margin-top:5px;display:flex;align-items:center;gap:7px}
 .portrait-hp-bar{flex:1;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden}
 .portrait-hp-fill{height:100%;border-radius:2px;transition:width .5s,background .5s}
@@ -819,6 +822,17 @@ function getPortraitSvg(classe,razza){
 }
 
 /* ─── Party rendering ─── */
+function charImage(c){
+  const url=c.ritratto||c.portrait||c.portrait_url||c.avatar||c.immagine||c.image_url;
+  return url?`<img src="${esc(url)}" alt="${esc(c.nome||'Ritratto')}">`:getPortraitSvg(c.classe||c.ruolo||'',c.razza||c.origine||'');
+}
+function charLook(c){
+  return c.aspetto||c.descrizione_fisica||c.appearance||c.descrizione||'';
+}
+function charSubtitle(c){
+  return [c.ruolo||c.classe||c.archetipo||'',c.razza||c.origine||'',c.livello?'Lv.'+c.livello:''].filter(Boolean).join(' · ');
+}
+
 const equipOpen=new Set();
 let lastChars=null;
 function toggleSection(key,store){
@@ -834,7 +848,7 @@ function renderParty(chars){
     return;
   }
   el.innerHTML=Object.entries(chars).map(([k,c])=>{
-    const n=c.nome||k,cl=c.classe||'',ra=c.razza||'',lv=c.livello;
+    const n=c.nome||k,cl=c.classe||'',ra=c.razza||'',lv=c.livello,look=charLook(c);
     const hp=c.hp||{},has=hp.max!=null,p=has?pct(hp.correnti,hp.max):100;
     const stats=Object.entries(c.stats||{}).slice(0,6);
     const inv=Array.isArray(c.inventario)?c.inventario:[];
@@ -843,15 +857,19 @@ function renderParty(chars){
     const hcls2=has?hcls(hp.correnti,hp.max):'';
     return `<div class="pcard">
       <div class="pcard-top">
-        <div class="pcard-portrait">${getPortraitSvg(cl,ra)}</div>
+        <div class="pcard-portrait">${charImage(c)}</div>
         <div class="pcard-meta">
           <div class="pcard-name">${esc(n)}</div>
-          <div class="pcard-class">${esc([cl,ra].filter(Boolean).join(' · '))}</div>
+          <div class="pcard-class">${esc(charSubtitle(c))}</div>
+          ${look?`<div class="pcard-aspetto">${esc(look)}</div>`:''}
           <div class="pcard-badges">
             ${lv?`<span class="badge gold">Lv.${lv}</span>`:''}
             ${c.ca!=null?`<span class="badge blue">CA ${c.ca}</span>`:''}
+            ${c.bonus_competenza!=null?`<span class="badge blue">PB +${c.bonus_competenza}</span>`:''}
+            ${c.velocita!=null?`<span class="badge blue">${esc(String(c.velocita))} ft</span>`:''}
             ${c.giocatore?`<span class="badge green">${esc(c.giocatore)}</span>`:''}
           </div>
+          ${c.background?`<div class="pcard-class">${esc(c.background)}</div>`:''}
           ${has?`<div style="margin-top:5px">
             <div class="hp-row">
               <div class="hp-bar"><div class="hp-fill ${hcls2}" style="width:${p}%;background:${hbgColor}"></div></div>
@@ -883,14 +901,15 @@ function renderPortraits(chars){
     return `<div class="no-party" style="min-height:200px"><div class="no-party-rune">✦</div><span>Nessun personaggio nella campagna</span></div>`;
   }
   const cards=Object.entries(chars).map(([k,c])=>{
-    const n=c.nome||k,cl=c.classe||'',ra=c.razza||'';
+    const n=c.nome||k,cl=c.classe||'',ra=c.razza||'',look=charLook(c);
     const hp=c.hp||{},has=hp.max!=null,p=has?pct(hp.correnti,hp.max):100;
     const hbgColor=has?hbg(hp.correnti,hp.max):'var(--hp-s)';
     return `<div class="portrait-panel">
-      ${getPortraitSvg(cl,ra)}
+      ${charImage(c)}
       <div class="portrait-label">
         <div class="portrait-name">${esc(n)}</div>
-        <div class="portrait-sub">${esc([cl,ra,c.livello?'Lv.'+c.livello:''].filter(Boolean).join(' · '))}</div>
+        <div class="portrait-sub">${esc(charSubtitle(c))}</div>
+        ${look?`<div class="portrait-aspetto">${esc(look)}</div>`:''}
         ${has?`<div class="portrait-hp">
           <div class="portrait-hp-bar"><div class="portrait-hp-fill" style="width:${p}%;background:${hbgColor}"></div></div>
           <span class="portrait-hp-val">${hp.correnti}/${hp.max}</span>

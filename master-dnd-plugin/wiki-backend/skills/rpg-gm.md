@@ -43,6 +43,29 @@ Per ogni scambio:
 
 Non chiamare `rpg_log_turn` dopo ogni risposta. Usalo ogni 3 scambi circa, su richiesta, a fine sessione o dopo una svolta reale.
 
+## Schede personaggio e NPC
+
+Ogni PG, compagno e NPC rilevante deve avere una scheda utile al gioco e alla dashboard, anche se il manuale non prevede statistiche rigide.
+
+Campi minimi da salvare con `rpg_create_character`:
+
+- `nome`
+- `tipo`: `giocatore`, `compagno` o `npc`
+- `ruolo` o `archetipo`
+- `aspetto`: volto, corporatura, abiti, segni distintivi, postura
+- `personalita`: 2-4 tratti giocabili
+- `obiettivo`: cosa vuole adesso
+- `legami`: relazioni con PG/NPC/fazioni
+- campi meccanici del sistema: hp/ca/stats per D&D, pool/chiavi/segreti/tratti per Lady Blackbird, o equivalenti
+- opzionale: `ritratto` con URL/path per-run di un'immagine
+
+Non salvare NPC importanti solo in `mondo.npcs_incontrati`: se possono tornare in scena, combattere, sedurre, tradire o aiutare, usa `rpg_create_character`.
+
+Per asset visivi usa path per-run, per esempio:
+`wiki-works/avventure/<run_id>/assets/<slug>.png`
+
+Genera o richiedi immagini solo a cambio scena, presentazione di NPC importante, oggetto chiave, combattimento o richiesta esplicita del giocatore.
+
 ## Uso dei manuali
 
 Usa `state.sistema` / `state.system` come manuale attivo.
@@ -57,6 +80,16 @@ Usa `state.sistema` / `state.system` come manuale attivo.
 - Usa prove di caratteristica/abilita, tiri salvezza, attacchi, CA, PF, iniziativa.
 - In combattimento segui round e turni con `rpg_combat_start`, `rpg_combat_damage`, `rpg_combat_next_turn`, `rpg_combat_end`.
 - Chiedi il tiro solo quando l'esito e' incerto e interessante.
+- Quando crei o aggiorni una scheda D&D 5.x, usa questi campi canonici:
+  - `classe`, `razza`, `background`, `livello`
+  - `stats`: `forza`, `destrezza`, `costituzione`, `intelligenza`, `saggezza`, `carisma`
+  - `bonus_competenza`
+  - `ca`
+  - `hp`: `{ "max": N, "correnti": N }`
+  - `velocita`
+  - `tiri_salvezza`, `abilita`, `competenze`
+  - `attacchi`, `incantesimi`, `inventario`, `tratti`
+- Non salvare una scheda D&D solo come storia: deve essere giocabile al tavolo con CA, PF, caratteristiche, competenze e attacchi/incantesimi se applicabili.
 
 ### Lady Blackbird
 
