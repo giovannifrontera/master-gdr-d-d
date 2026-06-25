@@ -70,6 +70,9 @@ function parseAndRoll(expression, adv = "none", explode = false) {
 }
 function setNestedValue(obj, path, value) {
     const parts = path.split(".");
+    if (parts.some((part) => ["__proto__", "prototype", "constructor"].includes(part))) {
+        throw new Error("Invalid state path.");
+    }
     let current = obj;
     for (let i = 0; i < parts.length - 1; i++) {
         const part = parts[i];
@@ -220,9 +223,16 @@ export default definePluginEntry({
             const legacyFile = join(stateDir, "active_run.json");
             writeFileSync(legacyFile, JSON.stringify({ active_run_id: runId }, null, 2), "utf-8");
         };
+        const validateRunId = (runId) => {
+            if (typeof runId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(runId)) {
+                throw new Error("Invalid run ID.");
+            }
+            return runId;
+        };
+        const runStateFile = (runId) => join(stateDir, `${validateRunId(runId)}.json`);
         const loadState = (runId) => {
             ensureStateDir();
-            const file = join(stateDir, `${runId}.json`);
+            const file = runStateFile(runId);
             if (!existsSync(file)) {
                 throw new Error(`Session state file not found for run ID: ${runId}`);
             }
@@ -230,7 +240,8 @@ export default definePluginEntry({
         };
         const saveState = (runId, state, sessionKey) => {
             ensureStateDir();
-            const file = join(stateDir, `${runId}.json`);
+            runId = validateRunId(runId);
+            const file = runStateFile(runId);
             try {
                 // Create backup folder for this run
                 const backupDir = join(stateDir, "backups", runId);
@@ -1139,7 +1150,7 @@ refresh();setInterval(refresh,2500);
                     try {
                         const state = loadState(rawParams.run_id);
                         setNestedValue(state, rawParams.path, rawParams.value);
-                        saveState(rawParams.run_id, state);
+                        saveState(rawParams.run_id, state, ctx?.sessionKey);
                         return { status: "success", run_id: rawParams.run_id, state };
                     }
                     catch (err) {
@@ -1681,6 +1692,7 @@ refresh();setInterval(refresh,2500);
                             return { status: "error", message: "Nessuna run attiva trovata." };
                         }
                         ensureStateDir();
+                        const safeRunId = validateRunId(runId);
                         const backupDir = join(stateDir, "backups", runId);
                         if (!existsSync(backupDir)) {
                             return { status: "success", message: "Nessun backup trovato per questa run.", backups: [] };
@@ -1714,7 +1726,7 @@ refresh();setInterval(refresh,2500);
                             }
                         }
                         else {
-                            const latestFile = `${runId}_latest.json.bak`;
+                            const latestFile = `${safeRunId}_latest.json.bak`;
                             if (backupFiles.includes(latestFile)) {
                                 fileToRestore = join(backupDir, latestFile);
                             }
@@ -1727,9 +1739,9 @@ refresh();setInterval(refresh,2500);
                         }
                         const rawContent = readFileSync(fileToRestore, "utf-8");
                         const state = JSON.parse(rawContent);
-                        const mainFile = join(stateDir, `${runId}.json`);
+                        const mainFile = runStateFile(safeRunId);
                         writeFileSync(mainFile, rawContent, "utf-8");
-                        setActiveRunId(runId, ctx?.sessionKey);
+                        setActiveRunId(safeRunId, ctx?.sessionKey);
                         return {
                             status: "success",
                             message: `Salvataggio ripristinato con successo dal file '${fileToRestore}'. Il gioco è stato riportato al turno ${state.turno || 1}.`,
