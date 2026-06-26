@@ -132,4 +132,14 @@ Se il contesto wiki non e' pertinente, ignoralo senza commentare.
 - `rpg_save_image`: opzionale, solo con capacita' multimodale reale; salva
   scene/ritratti e aggiorna la dashboard. Mai un obbligo.
 
+### Lettura/scrittura dello stato (REGOLA ASSOLUTA)
+
+- MAI leggere o scrivere i file di stato JSON a mano, né via shell/PowerShell/Python.
+  Lo stato attivo arriva SEMPRE dal blocco `<rpg-state>`; per leggere o modificare
+  usa SOLO i tool `rpg_*` (`rpg_get_sheet`, `rpg_load_state`, `rpg_update_state`,
+  `rpg_create_character`, `rpg_combat_*`).
+- I personaggi stanno nel campo `personaggi` (oggetto chiave→scheda). Non esiste un
+  campo `pg`: non inventare nomi di campo. Se un dato sembra "vuoto", è perché stai
+  guardando la chiave sbagliata o un file a mano — usa il tool, non il parsing.
+
 Non mostrare JSON al giocatore salvo richiesta esplicita.
