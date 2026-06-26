@@ -666,17 +666,18 @@ async function refresh(){
 refresh();setInterval(refresh,2500);
 <\/script>
 </body></html>`;
-        // Read gateway auth token + port from OPENCLAW_HOME first, then ~/.openclaw.
-        let gatewayAuthToken = "";
-        let gatewayListenPort = 18789;
+        // Gateway auth token + port: config del plugin ha priorità (override per sandbox),
+        // poi OPENCLAW_HOME, poi ~/.openclaw. Evita i retry ECONNREFUSED su porta sbagliata.
+        let gatewayAuthToken = cfg.gatewayAuthToken || "";
+        let gatewayListenPort = cfg.gatewayPort || 18789;
         try {
             const openclawHome = process.env.OPENCLAW_HOME;
             const cfgPath = openclawHome
                 ? (existsSync(join(openclawHome, "openclaw.json")) ? join(openclawHome, "openclaw.json") : join(openclawHome, ".openclaw", "openclaw.json"))
                 : join(homedir(), ".openclaw", "openclaw.json");
             const ocCfg = JSON.parse(readFileSync(cfgPath, "utf-8"));
-            gatewayAuthToken = ocCfg.gateway?.auth?.token || "";
-            gatewayListenPort = ocCfg.gateway?.port || 18789;
+            if (!cfg.gatewayAuthToken) gatewayAuthToken = ocCfg.gateway?.auth?.token || "";
+            if (!cfg.gatewayPort) gatewayListenPort = ocCfg.gateway?.port || 18789;
         }
         catch { }
         const dashboardHtmlPath = join(pluginDir, "dashboard.html");

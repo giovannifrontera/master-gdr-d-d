@@ -7,6 +7,13 @@ import sys
 import argparse
 from pathlib import Path
 
+# Windows: la console usa CP1252 e va in crash sull'output JSON con accenti/em-dash.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 REQUIRED_CONFIG_FIELDS = [
     ("workspace",),
     ("projects",),

@@ -262,11 +262,17 @@ async def _get_embed_model():
             import logging as _logging
             for _name in ("sentence_transformers", "transformers", "huggingface_hub"):
                 _logging.getLogger(_name).setLevel(_logging.ERROR)
+            import torch
             from sentence_transformers import SentenceTransformer
             model_name = _cfg.get("lancedb", {}).get("embedding_model", "BAAI/bge-m3")
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            if device == "cuda":
+                print(f"[wiki] Loading {model_name} on GPU ({torch.cuda.get_device_name(0)})", file=sys.stderr, flush=True)
+            else:
+                print(f"[wiki] WARNING: CUDA non disponibile, embedding su CPU", file=sys.stderr, flush=True)
             loop = asyncio.get_event_loop()
             _embed_model = await loop.run_in_executor(
-                None, lambda: SentenceTransformer(model_name)
+                None, lambda: SentenceTransformer(model_name, device=device)
             )
     return _embed_model
 

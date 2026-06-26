@@ -10,8 +10,10 @@ _tokenizer = None
 def _load_model(model_name: str = "BAAI/bge-m3"):
     global _model, _tokenizer
     if _model is None:
+        import torch
         from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer(model_name)
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        _model = SentenceTransformer(model_name, device=device)
         _tokenizer = _model.tokenizer
     return _model, _tokenizer
 

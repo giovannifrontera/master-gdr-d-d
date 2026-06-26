@@ -113,7 +113,9 @@ def _run(args):
         return
 
     table = db.open_table("wiki_pages")
-    model = SentenceTransformer(cfg["lancedb"]["embedding_model"])
+    import torch
+    _device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = SentenceTransformer(cfg["lancedb"]["embedding_model"], device=_device)
     vector = model.encode(args.q, normalize_embeddings=True).tolist()
     q_lower = args.q.lower()
     wants_rules = any(word in q_lower for word in (

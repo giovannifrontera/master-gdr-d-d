@@ -87,6 +87,15 @@
         "type": "boolean",
         "default": false,
         "description": "Abilita la scrittura dei log diagnostici."
+      },
+      "gatewayPort": {
+        "type": "integer",
+        "default": 18789,
+        "description": "Porta del gateway OpenClaw per il WS proxy della dashboard. Override per ambienti sandbox (es. 8790)."
+      },
+      "gatewayAuthToken": {
+        "type": "string",
+        "description": "Token di autenticazione del gateway OpenClaw. Se assente viene letto da openclaw.json."
       }
     }
   }
