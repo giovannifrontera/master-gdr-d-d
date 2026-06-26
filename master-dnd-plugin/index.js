@@ -675,7 +675,7 @@ refresh();setInterval(refresh,2500);
             const cfgPath = openclawHome
                 ? (existsSync(join(openclawHome, "openclaw.json")) ? join(openclawHome, "openclaw.json") : join(openclawHome, ".openclaw", "openclaw.json"))
                 : join(homedir(), ".openclaw", "openclaw.json");
-            const ocCfg = JSON.parse(readFileSync(cfgPath, "utf-8"));
+            const ocCfg = JSON.parse(readFileSync(cfgPath, "utf-8").replace(/^﻿/, ""));
             if (!cfg.gatewayAuthToken) gatewayAuthToken = ocCfg.gateway?.auth?.token || "";
             if (!cfg.gatewayPort) gatewayListenPort = ocCfg.gateway?.port || 18789;
         }
