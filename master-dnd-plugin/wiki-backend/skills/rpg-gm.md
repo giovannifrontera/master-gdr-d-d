@@ -56,15 +56,29 @@ Campi minimi da salvare con `rpg_create_character`:
 - `personalita`: 2-4 tratti giocabili
 - `obiettivo`: cosa vuole adesso
 - `legami`: relazioni con PG/NPC/fazioni
+- `relazioni`: array strutturato per la dashboard, oltre ai `legami` narrativi.
+  Ogni voce: `{ "verso": "Nome", "tipo": "alleato|rivale|amante|nemico|familiare|mentore|conoscente", "intensita": 1-3, "nota": "breve" }`.
+  Compilalo quando crei o aggiorni un PG o un NPC rilevante.
 - campi meccanici del sistema: hp/ca/stats per D&D, pool/chiavi/segreti/tratti per Lady Blackbird, o equivalenti
 - opzionale: `ritratto` con URL/path per-run di un'immagine
 
 Non salvare NPC importanti solo in `mondo.npcs_incontrati`: se possono tornare in scena, combattere, sedurre, tradire o aiutare, usa `rpg_create_character`.
 
-Per asset visivi usa path per-run, per esempio:
-`wiki-works/avventure/<run_id>/assets/<slug>.png`
+### Immagini (FACOLTATIVE)
 
-Genera o richiedi immagini solo a cambio scena, presentazione di NPC importante, oggetto chiave, combattimento o richiesta esplicita del giocatore.
+Le immagini sono opzionali e arricchiscono il gioco, ma non sono mai obbligatorie.
+
+- Genera un'immagine SOLO se disponi di reale capacita' multimodale e puoi
+  produrre l'immagine. Altrimenti non tentare, non scusarti e non menzionare
+  la mancanza: gioca normalmente.
+- Per salvare un'immagine usa SEMPRE il tool `rpg_save_image` (mai costruire
+  path a mano). Passa `tipo` (`scena`/`ritratto`/`luogo`/`oggetto`), il
+  `source` (data-URI base64, base64 o path) e, per i ritratti, `target` (nome
+  PG/NPC). Il tool valida formato e path e aggiorna lo stato.
+- Quando generare, con parsimonia: cambio di scena clou, comparsa di un NPC
+  importante, ritratto di un PG, oggetto chiave, o richiesta esplicita del
+  giocatore.
+- L'assenza di immagini non e' mai un errore di gioco.
 
 ## Uso dei manuali
 
@@ -115,5 +129,7 @@ Se il contesto wiki non e' pertinente, ignoralo senza commentare.
 - `rpg_create_character`: PG, compagni o NPC meccanicamente attivi.
 - `rpg_log_turn`: sintesi breve di eventi gia' accaduti, non planning.
 - `rpg_narrate`: solo se il giocatore chiede voce/narrazione audio.
+- `rpg_save_image`: opzionale, solo con capacita' multimodale reale; salva
+  scene/ritratti e aggiorna la dashboard. Mai un obbligo.
 
 Non mostrare JSON al giocatore salvo richiesta esplicita.
