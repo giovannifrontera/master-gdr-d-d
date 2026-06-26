@@ -16,6 +16,7 @@
       "rpg_scan_manuals", "dnd_scan_manuals",
       "rpg_list_runs", "dnd_list_runs",
       "rpg_create_character", "dnd_create_character",
+      "rpg_save_image", "dnd_save_image",
       "rpg_combat_start", "dnd_combat_start",
       "rpg_combat_damage", "dnd_combat_damage",
       "rpg_combat_next_turn", "dnd_combat_next_turn",
