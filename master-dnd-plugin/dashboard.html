@@ -50,12 +50,16 @@ h2{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:4px;text-transform:
   text-shadow:0 0 24px rgba(201,162,39,.4),0 0 60px rgba(201,162,39,.15);letter-spacing:2px}
 .hdr-camp{font-family:'EB Garamond',serif;font-style:italic;color:var(--ash);font-size:.9rem}
 .hdr-info{display:flex;gap:16px;align-items:center;font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--ash)}
+.panel-toggle{background:var(--card);border:1px solid var(--bdr);color:var(--parchment);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:.75rem}
+.panel-toggle.off{opacity:.4}
 .dot{width:6px;height:6px;border-radius:50%;display:inline-block;animation:blink 2s infinite}
 .dot.ok{background:var(--hp-s)}.dot.err{background:var(--blood-b)}.dot.warn{background:var(--hp-w)}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ── Columns ── */
 .cols{flex:1;display:grid;grid-template-columns:290px 1fr 320px;gap:1px;background:var(--bdr);overflow:hidden;min-height:0}
+.cols.hide-chat{grid-template-columns:290px 1fr}
+.cols.hide-chat .col:last-child{display:none}
 .col{background:var(--panel);display:flex;flex-direction:column;overflow:hidden}
 
 /* ── Section header ── */
@@ -75,6 +79,7 @@ h2{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:4px;text-transform:
 .pcard{background:var(--card);border:1px solid var(--bdr);border-radius:6px;
   margin-bottom:10px;overflow:hidden;transition:border-color .2s}
 .pcard:hover{border-color:var(--bdr-s)}
+.pcard.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
 .pcard-top{display:flex;gap:10px;padding:10px 10px 8px}
 .pcard-portrait{width:60px;height:84px;flex-shrink:0;border-radius:4px;overflow:hidden;
   border:1px solid var(--bdr-s);background:var(--arcane)}
@@ -155,6 +160,25 @@ h2{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:4px;text-transform:
 .scene-trama-k{font-family:'Share Tech Mono',monospace;font-size:.56rem;
   color:var(--gold-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
 .scene-trama-v{font-size:.72rem;color:var(--arcane-light);font-style:italic;line-height:1.45}
+.scene-hero{position:relative;border-radius:8px;overflow:hidden;margin-bottom:12px;border:1px solid var(--bdr);cursor:zoom-in}
+.scene-hero img{width:100%;max-height:340px;object-fit:cover;display:block}
+.scene-hero-cap{position:absolute;left:0;right:0;bottom:0;padding:10px 12px;font-size:.8rem;color:var(--parchment);background:linear-gradient(transparent,rgba(0,0,0,.8))}
+.lightbox{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.92);align-items:center;justify-content:center;cursor:zoom-out;padding:24px}
+.lightbox.open{display:flex}
+.lightbox-inner{max-width:92vw;max-height:92vh;overflow:auto}
+.lightbox-inner img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:6px}
+.sheet{background:var(--card);border:1px solid var(--bdr);border-radius:8px;padding:12px;margin-bottom:12px}
+.sheet-head{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.sheet-portrait{width:72px;height:96px;border-radius:6px;overflow:hidden;flex-shrink:0}
+.sheet-portrait svg,.sheet-portrait img{width:100%;height:100%;object-fit:cover;display:block}
+.sheet-name{font-family:'Cinzel',serif;font-size:1.1rem;color:var(--parchment);font-weight:700}
+.sheet-sub{font-size:.72rem;color:var(--ash)}
+.sheet-row{display:flex;gap:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.76rem}
+.sheet-k{flex:0 0 38%;color:var(--gold);text-transform:capitalize}
+.sheet-v{flex:1;color:var(--parchment);word-break:break-word}
+.rel-panel{background:var(--card);border:1px solid var(--bdr);border-radius:8px;padding:12px;margin-bottom:12px}
+.sheet-sec-title{font-family:'Cinzel',serif;color:var(--gold);font-size:.85rem;margin-bottom:8px}
+.rel-legend{margin-top:6px;display:flex;flex-wrap:wrap;gap:2px}
 
 /* ════════════════════════════════════
    CENTER — DYNAMIC PANEL
@@ -324,6 +348,7 @@ h2{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:4px;text-transform:
     <span class="mono" id="tinfo">—</span>
     <span><span class="dot err" id="sdot"></span> <span id="slabel">Avvio...</span></span>
     <span><span class="dot warn" id="wsdot"></span> <span id="wslabel">Chat...</span></span>
+    <button class="panel-toggle" id="toggle-chat" onclick="togglePanel('chat')" title="Mostra/nascondi chat">Chat</button>
   </div>
 </header>
 
@@ -361,6 +386,8 @@ h2{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:4px;text-transform:
 
 </div>
 
+<div id="lightbox" class="lightbox" onclick="closeLightbox()"><div class="lightbox-inner" id="lightbox-inner"></div></div>
+
 <script>
 const W=8,H=6,DASH_PORT=__DASH_PORT__;
 const WS_PROXY=`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws`;
@@ -373,6 +400,16 @@ function hbg(c,m){const p=pct(c,m);return p>50?'var(--hp-s)':p>25?'var(--hp-w)':
 function hcls(c,m){const p=pct(c,m);return p>50?'':'w'}
 function defEmoji(t){return t==='giocatore'?'🧙':t==='compagno'?'🛡️':'⚔️'}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function assetUrl(rel){const s=String(rel||'');return /^(https?:|data:)/i.test(s)?s:(s?`http://localhost:${DASH_PORT}/${s.replace(/^\/+/,'')}`:'')}
+function openLightbox(html){const lb=document.getElementById('lightbox');document.getElementById('lightbox-inner').innerHTML=html;lb.classList.add('open')}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox()});
+function togglePanel(which){
+  const cols=document.querySelector('.cols');
+  const on=cols.classList.toggle('hide-'+which);
+  document.getElementById('toggle-'+which)?.classList.toggle('off',on);
+  try{localStorage.setItem('dnd-hide-'+which,on?'1':'0')}catch{}
+}
 
 /* ─── Markdown Parser ─── */
 function md(raw){
@@ -824,7 +861,7 @@ function getPortraitSvg(classe,razza){
 /* ─── Party rendering ─── */
 function charImage(c){
   const url=c.ritratto||c.portrait||c.portrait_url||c.avatar||c.immagine||c.image_url;
-  return url?`<img src="${esc(url)}" alt="${esc(c.nome||'Ritratto')}">`:getPortraitSvg(c.classe||c.ruolo||'',c.razza||c.origine||'');
+  return url?`<img src="${esc(assetUrl(url))}" alt="${esc(c.nome||'Ritratto')}">`:getPortraitSvg(c.classe||c.ruolo||'',c.razza||c.origine||'');
 }
 function charLook(c){
   return c.aspetto||c.descrizione_fisica||c.appearance||c.descrizione||'';
@@ -835,6 +872,8 @@ function charSubtitle(c){
 
 const equipOpen=new Set();
 let lastChars=null;
+let selectedCharKey=null;
+function selectChar(k){selectedCharKey=k;if(window.__lastState)renderFromState(window.__lastState)}
 function toggleSection(key,store){
   if(store.has(key))store.delete(key);else store.add(key);
   if(lastChars)renderParty(lastChars);
@@ -855,7 +894,7 @@ function renderParty(chars){
     const quests=Array.isArray(c.quest_attive)?c.quest_attive:[];
     const hbgColor=has?hbg(hp.correnti,hp.max):'var(--hp-s)';
     const hcls2=has?hcls(hp.correnti,hp.max):'';
-    return `<div class="pcard">
+    return `<div class="pcard ${selectedCharKey===k?'sel':''}" onclick="selectChar('${k.replace(/'/g,"\\'")}')" style="cursor:pointer">
       <div class="pcard-top">
         <div class="pcard-portrait">${charImage(c)}</div>
         <div class="pcard-meta">
@@ -920,9 +959,54 @@ function renderPortraits(chars){
   return `<div class="portraits-grid">${cards}</div>`;
 }
 
+function kvRows(obj){
+  return Object.entries(obj||{}).filter(([,v])=>v!=null&&v!=='').map(([k,v])=>{
+    const val=Array.isArray(v)?v.join(', '):(typeof v==='object'?JSON.stringify(v):String(v));
+    return `<div class="sheet-row"><span class="sheet-k">${esc(k)}</span><span class="sheet-v">${esc(val)}</span></div>`;
+  }).join('');
+}
+function renderSheet(c){
+  if(!c)return '';
+  const skip=new Set(['nome','giocatore','tipo','ritratto','portrait','avatar','relazioni']);
+  const base={};Object.entries(c).forEach(([k,v])=>{if(!skip.has(k))base[k]=v});
+  const url=assetUrl(c.ritratto||c.portrait||'');
+  const img=url?`<img src="${esc(url)}" alt="${esc(c.nome||'')}" onclick="openLightbox('<img src=\\'${esc(url)}\\'>')" style="cursor:zoom-in">`:charImage(c);
+  return `<div class="sheet">
+    <div class="sheet-head">
+      <div class="sheet-portrait">${img}</div>
+      <div><div class="sheet-name">${esc(c.nome||'')}</div>
+      <div class="sheet-sub">${esc(charSubtitle(c))}${c.giocatore?' - '+esc(c.giocatore):''}</div></div>
+    </div>
+    <div class="sheet-body">${kvRows(base)}</div>
+  </div>`;
+}
+
+const REL_COLOR={alleato:'#3fa34d',amante:'#d2589c',familiare:'#4aa6c9',mentore:'#c9a227',rivale:'#d08a2c',nemico:'#b53232',conoscente:'#7a7a8a'};
+function collectRelations(state){
+  const nodes=new Set(),edges=[];
+  const add=(from,rels)=>{(rels||[]).forEach(r=>{nodes.add(from);nodes.add(r.verso);edges.push({from,to:r.verso,tipo:r.tipo,intensita:r.intensita||1,nota:r.nota||''})})};
+  Object.values(state.personaggi||{}).forEach(c=>add(c.nome,c.relazioni));
+  ((state.mondo||{}).npcs_incontrati||[]).forEach(n=>{if(typeof n==='object'){if(n.relazioni&&n.relazioni.length)add(n.nome,n.relazioni);else if(n.nome)nodes.add(n.nome)}});
+  return {nodes:[...nodes],edges};
+}
+function renderRelations(state){
+  const {nodes,edges}=collectRelations(state);
+  if(!edges.length)return '';
+  const cx=180,cy=160,R=120,N=nodes.length,pos={};
+  nodes.forEach((n,i)=>{const a=-Math.PI/2+i*2*Math.PI/N;pos[n]={x:cx+R*Math.cos(a),y:cy+R*Math.sin(a)}});
+  const lines=edges.filter(e=>pos[e.from]&&pos[e.to]).map(e=>{
+    const p=pos[e.from],q=pos[e.to],col=REL_COLOR[e.tipo]||REL_COLOR.conoscente;
+    return `<line x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}" stroke="${col}" stroke-width="${e.intensita}" opacity=".7"><title>${esc(e.from+' -> '+e.to+' ('+e.tipo+')'+(e.nota?': '+e.nota:''))}</title></line>`;
+  }).join('');
+  const dots=nodes.map(n=>{const p=pos[n];return `<g><circle cx="${p.x}" cy="${p.y}" r="5" fill="#c9a227"/><text x="${p.x}" y="${p.y-9}" text-anchor="middle" font-size="9" fill="#e8d5b0">${esc(n)}</text></g>`}).join('');
+  const legend=Object.entries(REL_COLOR).map(([k,v])=>`<span style="color:${v};font-size:.62rem;margin-right:8px">* ${k}</span>`).join('');
+  return `<div class="rel-panel"><div class="sheet-sec-title">Relazioni</div><svg viewBox="0 0 360 320" style="width:100%;height:auto">${lines}${dots}</svg><div class="rel-legend">${legend}</div></div>`;
+}
+
 /* ─── Center Panel: Scene ─── */
 function renderScene(state){
   const mondo=state.mondo||{};
+  const scena=mondo.scena||{};
   const loc=mondo.locazione||'Luogo sconosciuto';
   const tempo=mondo.tempo||'';
   const rawNpcs=Array.isArray(mondo.npcs_incontrati)?mondo.npcs_incontrati:[];
@@ -932,7 +1016,13 @@ function renderScene(state){
     if(typeof n==='string')return{nome:n,stato:''};
     return{nome:n.nome||n.name||'?',stato:n.stato||n.ruolo||''};
   });
+  const heroUrl=scena.immagine?assetUrl(scena.immagine):'';
+  const hero=heroUrl?`<div class="scene-hero" onclick="openLightbox('<img src=\\'${esc(heroUrl)}\\'>')">
+      <img src="${esc(heroUrl)}" alt="scena">
+      ${scena.didascalia?`<div class="scene-hero-cap">${esc(scena.didascalia)}</div>`:''}
+    </div>`:'';
   return `<div class="scene-wrap">
+    ${hero}
     <div class="scene-location">
       <div class="scene-loc-icon">🗺</div>
       <div class="scene-loc-name">${esc(loc)}</div>
@@ -993,6 +1083,30 @@ function renderCombat(comb,chars){
 }
 
 /* ─── State polling ─── */
+function renderFromState(state){
+  document.getElementById('cname').textContent=state.titolo||'';
+  document.getElementById('tinfo').textContent='Turno '+(state.turno||0)+' - '+(state.sistema||'dnd5e');
+  renderParty(state.personaggi||{});
+  const comb=state.combattimento;
+  const inCombat=comb?.attivo&&comb.ordine_iniziativa?.length>0;
+  const centerEl=document.getElementById('center');
+  const labelEl=document.getElementById('center-label');
+  const chipEl=document.getElementById('rchip');
+  if(inCombat){
+    labelEl.textContent='Combattimento';
+    chipEl.style.display='';
+    chipEl.textContent='RND '+comb.round;
+    centerEl.innerHTML=renderCombat(comb,state.personaggi);
+  }else{
+    labelEl.textContent='Scenario';
+    chipEl.style.display='none';
+    const chars=state.personaggi||{},keys=Object.keys(chars);
+    if(selectedCharKey&&!chars[selectedCharKey])selectedCharKey=null;
+    if(!selectedCharKey&&keys.length)selectedCharKey=keys[0];
+    const sel=selectedCharKey?chars[selectedCharKey]:null;
+    centerEl.innerHTML=renderScene(state)+(sel?renderSheet(sel):renderPortraits(chars))+renderRelations(state);
+  }
+}
 async function pollState(){
   try{
     const r=await fetch(`http://localhost:${DASH_PORT}/api/state`,{signal:AbortSignal.timeout(2500)});
@@ -1000,25 +1114,8 @@ async function pollState(){
     const{state}=await r.json();
     document.getElementById('sdot').className='dot ok';
     document.getElementById('slabel').textContent='Stato OK';
-    document.getElementById('cname').textContent=state.titolo||'';
-    document.getElementById('tinfo').textContent='Turno '+(state.turno||0)+' · '+(state.sistema||'dnd5e');
-    renderParty(state.personaggi||{});
-    // Dynamic center
-    const comb=state.combattimento;
-    const inCombat=comb?.attivo&&comb.ordine_iniziativa?.length>0;
-    const centerEl=document.getElementById('center');
-    const labelEl=document.getElementById('center-label');
-    const chipEl=document.getElementById('rchip');
-    if(inCombat){
-      labelEl.textContent='Combattimento';
-      chipEl.style.display='';
-      chipEl.textContent='RND '+comb.round;
-      centerEl.innerHTML=renderCombat(comb,state.personaggi);
-    }else{
-      labelEl.textContent='Scenario';
-      chipEl.style.display='none';
-      centerEl.innerHTML=renderScene(state);
-    }
+    window.__lastState=state;
+    renderFromState(state);
   }catch(e){
     document.getElementById('sdot').className='dot err';
     document.getElementById('slabel').textContent='Offline: '+e.message;
@@ -1152,6 +1249,12 @@ setInterval(refreshChat,2500);
 pollState();
 setInterval(pollState,2500);
 connectWS();
+(function restorePanels(){
+  ['chat'].forEach(w=>{
+    let v='0';try{v=localStorage.getItem('dnd-hide-'+w)||'0'}catch{}
+    if(v==='1'){document.querySelector('.cols').classList.add('hide-'+w);document.getElementById('toggle-'+w)?.classList.add('off')}
+  });
+})();
 </script>
 </body>
 </html>
