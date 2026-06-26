@@ -12,6 +12,7 @@ let _dashServer = null;
 // Resolve current plugin directory (works for both ES module and compiled index.js)
 const pluginDir = dirname(fileURLToPath(import.meta.url));
 const wikiBackendDir = join(pluginDir, "wiki-backend");
+import { decodeImageSource, sniffImageExt, safeSlug, resolveAssetPath, normalizeRelations } from "./lib/media.js";
 function parseAndRoll(expression, adv = "none", explode = false) {
     const normalizedAdv = adv.toLowerCase().trim();
     const advantageMode = normalizedAdv === "vantaggio" || normalizedAdv === "advantage" ? "advantage" :
@@ -121,6 +122,7 @@ function normalizeCharacter(name, giocatore, sheet = {}, tipo = "giocatore") {
         const correnti = Number(normalized.hp.correnti ?? max);
         normalized.hp = { max, correnti: Math.max(0, Math.min(max, correnti)) };
     }
+    normalized.relazioni = normalizeRelations(normalized.relazioni || normalized.relations || normalized.legami_strutturati);
     return normalized;
 }
 function normalizeGameState(state) {
@@ -310,6 +312,8 @@ export default definePluginEntry({
             return runId;
         };
         const runStateFile = (runId) => join(stateDir, `${validateRunId(runId)}.json`);
+        const runAssetsDir = (runId) => join(wikiDataDir, "wiki-works", "avventure", validateRunId(runId), "assets");
+        const ASSET_CT = { png: "image/png", jpeg: "image/jpeg", webp: "image/webp" };
         const loadState = (runId) => {
             ensureStateDir();
             const file = runStateFile(runId);
@@ -693,6 +697,21 @@ refresh();setInterval(refresh,2500);
                     if (!runId) { res.end(JSON.stringify({ error: "no active run" })); return; }
                     try { res.end(JSON.stringify({ state: JSON.parse(readFileSync(join(stateDir, `${runId}.json`), "utf-8")) })); }
                     catch (e) { res.end(JSON.stringify({ error: String(e.message) })); }
+                }
+                else if (url.startsWith("/assets/")) {
+                    const runId = (() => {
+                        try { return JSON.parse(readFileSync(join(stateDir, "active_run.json"), "utf-8")).active_run_id || null; } catch { return null; }
+                    })();
+                    const file = decodeURIComponent(url.slice("/assets/".length));
+                    let resolved = null;
+                    try { resolved = runId ? resolveAssetPath(runAssetsDir(runId), file, join) : null; } catch { resolved = null; }
+                    if (!resolved || !existsSync(resolved)) { res.statusCode = 404; res.end("not found"); return; }
+                    const ext = resolved.split(".").pop().toLowerCase();
+                    const ct = ASSET_CT[ext === "jpg" ? "jpeg" : ext];
+                    if (!ct) { res.statusCode = 404; res.end("unsupported"); return; }
+                    res.setHeader("Content-Type", ct);
+                    res.setHeader("Cache-Control", "no-cache");
+                    res.end(readFileSync(resolved));
                 }
                 else if (url === "/api/chat") {
                     res.setHeader("Content-Type", "application/json");
@@ -1519,7 +1538,11 @@ refresh();setInterval(refresh,2500);
                             state.mondo = state.mondo || {};
                             state.mondo.npcs_incontrati = Array.isArray(state.mondo.npcs_incontrati) ? state.mondo.npcs_incontrati : [];
                             const idx = state.mondo.npcs_incontrati.findIndex((n) => characterKey(n.nome) === charNameKey);
+                            const sheet = state.personaggi[charNameKey] || {};
                             const npc = { nome: rawParams.character_name, stato: tipo, giocatore: rawParams.giocatore };
+                            if (sheet.ritratto) npc.ritratto = sheet.ritratto;
+                            if (sheet.relazioni && sheet.relazioni.length) npc.relazioni = sheet.relazioni;
+                            if (sheet.aspetto) npc.descrizione = npc.descrizione || sheet.aspetto;
                             if (idx === -1) state.mondo.npcs_incontrati.push(npc);
                             else state.mondo.npcs_incontrati[idx] = { ...state.mondo.npcs_incontrati[idx], ...npc };
                         }
@@ -1532,6 +1555,53 @@ refresh();setInterval(refresh,2500);
                     }
                     catch (err) {
                         return { status: "error", message: err.message };
+                    }
+                }
+            }));
+            // 12b. Tool: rpg_save_image (opzionale, non distruttivo)
+            registerWithAlias("rpg_save_image", (ctx) => ({
+                name: "rpg_save_image",
+                label: "Save Game Image",
+                description: "OPZIONALE. Salva un'immagine generata (scena, ritratto, luogo, oggetto) nella cartella assets della run e ne registra il riferimento nello stato. Usalo SOLO se disponi di capacità multimodale e puoi davvero produrre un'immagine. L'assenza di immagini non è mai un errore.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        tipo: { type: "string", enum: ["scena", "ritratto", "luogo", "oggetto"], description: "Tipo di immagine." },
+                        target: { type: "string", description: "Nome del PG/NPC (richiesto per tipo=ritratto)." },
+                        source: { type: "string", description: "L'immagine: data-URI base64, base64 grezzo, o path su disco." },
+                        slug: { type: "string", description: "Nome file opzionale (senza estensione)." },
+                        didascalia: { type: "string", description: "Didascalia opzionale (usata per tipo=scena)." },
+                        run_id: { type: "string", description: "ID run (opzionale)." }
+                    },
+                    required: ["tipo", "source"]
+                },
+                execute: async (_toolCallId, p) => {
+                    try {
+                        const runId = p.run_id || getActiveRunId(ctx?.sessionKey);
+                        if (!runId) return { status: "error", message: "Nessuna run attiva." };
+                        const decoded = decodeImageSource(p.source, readFileSync);
+                        if (!decoded) return { status: "error", message: "Sorgente non è un'immagine valida (png/jpeg/webp). Immagine ignorata, il gioco continua." };
+                        const slug = safeSlug(p.slug || p.target || p.tipo) + "-" + Date.now().toString(36);
+                        const fileName = `${slug}.${decoded.ext}`;
+                        const dir = runAssetsDir(runId);
+                        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+                        writeFileSync(join(dir, fileName), decoded.buffer);
+                        const rel = `assets/${fileName}`;
+                        const state = loadState(runId);
+                        if (p.tipo === "scena") {
+                            state.mondo = state.mondo || {};
+                            state.mondo.scena = { immagine: rel, didascalia: p.didascalia || "", turno: state.turno || 0 };
+                        } else if (p.tipo === "ritratto" && p.target) {
+                            const key = characterKey(p.target);
+                            if (state.personaggi && state.personaggi[key]) state.personaggi[key].ritratto = rel;
+                            const npcs = (state.mondo && state.mondo.npcs_incontrati) || [];
+                            const npc = npcs.find((n) => characterKey(n.nome) === key);
+                            if (npc) npc.ritratto = rel;
+                        }
+                        saveState(runId, state, ctx?.sessionKey);
+                        return { status: "success", path: rel, message: `Immagine salvata: ${rel}` };
+                    } catch (err) {
+                        return { status: "error", message: `Immagine non salvata (${err.message}). Il gioco continua.` };
                     }
                 }
             }));
