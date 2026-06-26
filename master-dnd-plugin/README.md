@@ -10,6 +10,10 @@ Gestione stato persistente, dadi, combattimento strutturato, memoria vettoriale 
 
 ## Installazione
 
+> Nota aggiornata: per la sandbox OpenClaw usare l'installazione gestita con
+> `openclaw plugins install`, non `plugins.load.paths`. Procedura completa:
+> `../docs/openclaw-sandbox-master-dnd.md`.
+
 ### 1. Clona il repository
 
 ```bash
