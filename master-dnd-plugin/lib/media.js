@@ -23,7 +23,7 @@ export function decodeImageSource(source, readFileSync) {
   const dataUri = source.match(/^data:image\/[a-z+]+;base64,(.+)$/i);
   if (dataUri) {
     buffer = Buffer.from(dataUri[1], "base64");
-  } else if (/^[A-Za-z0-9+/=\s]+$/.test(source) && source.length > 16 && !/[\\/.]/.test(source.slice(0, 24))) {
+  } else if (/^[A-Za-z0-9+/=\s]+$/.test(source) && source.length >= 16 && !/[\\/.]/.test(source.slice(0, 24))) {
     // looks like raw base64 (no path separators near the start)
     try { buffer = Buffer.from(source.replace(/\s+/g, ""), "base64"); } catch { buffer = null; }
   } else {
