@@ -1111,7 +1111,12 @@ async function pollState(){
   try{
     const r=await fetch(`http://localhost:${DASH_PORT}/api/state`,{signal:AbortSignal.timeout(2500)});
     if(!r.ok)throw new Error('HTTP '+r.status);
-    const{state}=await r.json();
+    const{state,error}=await r.json();
+    if(!state){
+      document.getElementById('sdot').className='dot';
+      document.getElementById('slabel').textContent=error==='no active run'?'Nessuna campagna attiva':('In attesa: '+(error||'stato non disponibile'));
+      return;
+    }
     document.getElementById('sdot').className='dot ok';
     document.getElementById('slabel').textContent='Stato OK';
     window.__lastState=state;
