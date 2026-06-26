@@ -7,10 +7,13 @@ import { promisify } from "node:util";
 import { createServer as createHttpServer } from "node:http";
 import { homedir } from "node:os";
 import { createHash, randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 const execFileAsync = promisify(execFile);
 let _dashServer = null;
 // Resolve current plugin directory (works for both ES module and compiled index.js)
 const pluginDir = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const NodeWebSocket = require(join(pluginDir, "node_modules", "openclaw", "node_modules", "ws"));
 const wikiBackendDir = join(pluginDir, "wiki-backend");
 import { decodeImageSource, sniffImageExt, safeSlug, resolveAssetPath, normalizeRelations } from "./lib/media.js";
 function parseAndRoll(expression, adv = "none", explode = false) {
@@ -744,7 +747,7 @@ refresh();setInterval(refresh,2500);
                 const accept = createHash("sha1").update(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").digest("base64");
                 socket.write(["HTTP/1.1 101 Switching Protocols", "Upgrade: websocket", "Connection: Upgrade", `Sec-WebSocket-Accept: ${accept}`, "", ""].join("\r\n"));
                 // Connect to OpenClaw as authenticated client
-                const gwWs = new globalThis.WebSocket(`ws://127.0.0.1:${gatewayListenPort}`);
+                const gwWs = new NodeWebSocket(`ws://127.0.0.1:${gatewayListenPort}`);
                 let gwReady = false;
                 const pending = [];
                 let buf = Buffer.alloc(0);
@@ -779,8 +782,8 @@ refresh();setInterval(refresh,2500);
                 socket.on("close", () => gwWs.close());
                 socket.on("error", () => gwWs.close());
                 // Relay OpenClaw → browser, handle auth internally
-                gwWs.onmessage = (evt) => {
-                    const data = typeof evt.data === "string" ? evt.data : Buffer.from(evt.data).toString("utf8");
+                gwWs.on("message", (raw) => {
+                    const data = typeof raw === "string" ? raw : Buffer.from(raw).toString("utf8");
                     try {
                         const parsed = JSON.parse(data);
                         // Handle challenge: respond with auth, don't forward to browser
@@ -806,9 +809,9 @@ refresh();setInterval(refresh,2500);
                         }
                     } catch { }
                     sendFrame(data);
-                };
-                gwWs.onclose = () => { if (!socket.destroyed) { socket.write(Buffer.from([0x88, 0x00])); socket.destroy(); } };
-                gwWs.onerror = (e) => { console.warn("[master-dnd-plugin] WS proxy error:", e.message); if (!socket.destroyed) socket.destroy(); };
+                });
+                gwWs.on("close", () => { if (!socket.destroyed) { socket.write(Buffer.from([0x88, 0x00])); socket.destroy(); } });
+                gwWs.on("error", (e) => { console.warn("[master-dnd-plugin] WS proxy error:", e.message); if (!socket.destroyed) socket.destroy(); });
             });
         } catch (e) {
             console.error("[master-dnd-plugin] Failed to start dashboard server:", e.message);
