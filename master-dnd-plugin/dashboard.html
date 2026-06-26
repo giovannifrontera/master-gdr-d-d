@@ -176,6 +176,10 @@ h2{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:4px;text-transform:
 .sheet-row{display:flex;gap:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.76rem}
 .sheet-k{flex:0 0 38%;color:var(--gold);text-transform:capitalize}
 .sheet-v{flex:1;color:var(--parchment);word-break:break-word}
+.sheet-subrow{display:flex;gap:6px;padding:1px 0}
+.sheet-subk{flex:0 0 32%;color:var(--gold);opacity:.8;text-transform:capitalize;font-size:.72rem}
+.sheet-subv{flex:1}
+.sheet-sub-item{padding:2px 0;border-bottom:1px dashed rgba(255,255,255,.06)}
 .rel-panel{background:var(--card);border:1px solid var(--bdr);border-radius:8px;padding:12px;margin-bottom:12px}
 .sheet-sec-title{font-family:'Cinzel',serif;color:var(--gold);font-size:.85rem;margin-bottom:8px}
 .rel-legend{margin-top:6px;display:flex;flex-wrap:wrap;gap:2px}
@@ -959,11 +963,23 @@ function renderPortraits(chars){
   return `<div class="portraits-grid">${cards}</div>`;
 }
 
+function fmtVal(v){
+  if(v==null||v==='')return '';
+  if(Array.isArray(v)){
+    if(v.every(x=>x==null||typeof x!=='object'))return esc(v.filter(x=>x!=null&&x!=='').join(', '));
+    return v.map(x=>`<div class="sheet-sub-item">${fmtVal(x)}</div>`).join('');
+  }
+  if(typeof v==='object'){
+    return Object.entries(v).filter(([,x])=>x!=null&&x!=='').map(([k,x])=>
+      `<div class="sheet-subrow"><span class="sheet-subk">${esc(k)}</span><span class="sheet-subv">${fmtVal(x)}</span></div>`
+    ).join('');
+  }
+  return esc(String(v));
+}
 function kvRows(obj){
-  return Object.entries(obj||{}).filter(([,v])=>v!=null&&v!=='').map(([k,v])=>{
-    const val=Array.isArray(v)?v.join(', '):(typeof v==='object'?JSON.stringify(v):String(v));
-    return `<div class="sheet-row"><span class="sheet-k">${esc(k)}</span><span class="sheet-v">${esc(val)}</span></div>`;
-  }).join('');
+  return Object.entries(obj||{}).filter(([,v])=>v!=null&&v!=='').map(([k,v])=>
+    `<div class="sheet-row"><span class="sheet-k">${esc(k)}</span><span class="sheet-v">${fmtVal(v)}</span></div>`
+  ).join('');
 }
 function renderSheet(c){
   if(!c)return '';
